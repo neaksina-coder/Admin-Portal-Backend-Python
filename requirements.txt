@@ -2,7 +2,9 @@ fastapi
 uvicorn[standard]
 psycopg2-binary
 SQLAlchemy
-passlib[bcrypt]
+passlib[argon2]
+argon2-cffi
 python-jose[cryptography]
 python-multipart
 pydantic[email]
+alembic
