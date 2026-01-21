@@ -12,11 +12,9 @@ RETRY_DELAY = 5 # seconds
 def create_tables():
     for i in range(MAX_RETRIES):
         try:
-            # Drop all tables first (for development purposes)
-            Base.metadata.drop_all(bind=engine)
-            # Create all tables
+            # Create tables if they don't exist; do not drop existing data.
             Base.metadata.create_all(bind=engine)
-            print("Database tables dropped and created successfully!")
+            print("Database tables created (if missing) successfully!")
             break
         except OperationalError:
             print(f"Database connection failed. Retrying in {RETRY_DELAY} seconds... ({i+1}/{MAX_RETRIES})")

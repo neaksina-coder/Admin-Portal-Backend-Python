@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from models.user import User
 from schemas.user import UserCreate
+from typing import Optional
 from utils.security import get_password_hash
 from datetime import datetime
 
@@ -19,13 +20,20 @@ def get_user(db: Session, user_id: int):
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(User).offset(skip).limit(limit).all()
 
-def create_user(db: Session, user: UserCreate):
+def create_user(
+    db: Session,
+    user: UserCreate,
+    role: Optional[str] = None,
+    is_superuser: Optional[bool] = None,
+):
     hashed_password = get_password_hash(user.password)
     db_user = User(
         username=user.username,
         email=user.email,
         hashed_password=hashed_password,
         privacy_policy_accepted=user.privacy_policy_accepted,
+        role=role if role is not None else "user",
+        is_superuser=is_superuser if is_superuser is not None else False,
     )
     try:
         db.add(db_user)
@@ -66,6 +74,18 @@ def update_user_password(db: Session, user_id: int, new_password: str):
     db_user.hashed_password = get_password_hash(new_password)
     db_user.reset_token = None
     db_user.reset_token_expires = None
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def update_user_role(db: Session, user_id: int, role: str, is_superuser: bool):
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        return None
+    db_user.role = role
+    db_user.is_superuser = is_superuser
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

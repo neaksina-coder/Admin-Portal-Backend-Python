@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from typing import Sequence
 
 from core.config import settings
 from db.session import SessionLocal
@@ -27,14 +28,40 @@ def get_current_user(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        token_data = TokenData(username=payload.get("sub"))
+        token_data = TokenData(email=payload.get("sub"))
     except (JWTError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = crud_user.get_user_by_username(db, username=token_data.username)
+    user = crud_user.get_user_by_email(db, email=token_data.email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+def require_roles(allowed_roles: Sequence[str]):
+    allowed = {role.lower() for role in allowed_roles}
+
+    def _require_roles(current_user: User = Depends(get_current_user)):
+        if current_user.is_superuser:
+            return current_user
+        user_role = (current_user.role or "").lower()
+        if user_role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
+        return current_user
+
+    return _require_roles
+
+
+def require_superuser(current_user: User = Depends(get_current_user)):
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+    return current_user

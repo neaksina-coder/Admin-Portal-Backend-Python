@@ -1,6 +1,6 @@
 # schemas/user.py
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, constr
+from typing import Optional, Literal
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -25,7 +25,7 @@ class Token(BaseModel):
     user: User
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class UserLogin(BaseModel):
@@ -37,10 +37,36 @@ class EmailSchema(BaseModel):
     email: EmailStr
 
 
+class OtpVerifySchema(BaseModel):
+    email: EmailStr
+    otp: str
+
+
 class PasswordResetSchema(BaseModel):
-    token: str
-    new_password: str
+    new_password: constr(min_length=8)
+    confirm_password: constr(min_length=8)
 
 class UserCreateResponse(BaseModel):
+    success: bool
+    status_code: int
     message: str
     user: User
+
+
+class TokenResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    token: str
+    user: User
+
+
+class UserRoleUpdate(BaseModel):
+    role: Literal["user", "admin", "superuser"]
+
+
+class OtpVerifyResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    reset_token: str

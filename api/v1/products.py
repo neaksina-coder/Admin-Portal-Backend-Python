@@ -12,14 +12,15 @@ from schemas.product import (
     ProductDeleteResponse
 )
 from crud import product as crud_product
-from api.deps import get_db
+from api import deps
 
 router = APIRouter()
 
 @router.post("/", response_model=ProductResponse, status_code=201)
 def create_product(
     product: ProductCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db),
+    _: dict = Depends(deps.require_roles(["admin"])),
 ):
     """Create a new product"""
     # Check if SKU already exists
@@ -46,7 +47,7 @@ def get_products(
     limit: int = Query(100, ge=1, le=100),
     category_id: Optional[int] = None,  # Changed from category
     status: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db)
 ):
     """Get all products with optional filters"""
     products = crud_product.get_products(
@@ -68,7 +69,7 @@ def get_products(
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db)
 ):
     """Get a specific product by ID"""
     product = crud_product.get_product(db, product_id=product_id)
@@ -85,7 +86,7 @@ def get_product(
 @router.get("/sku/{sku}", response_model=ProductResponse)
 def get_product_by_sku(
     sku: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db)
 ):
     """Get a specific product by SKU"""
     product = crud_product.get_product_by_sku(db, sku=sku)
@@ -102,7 +103,8 @@ def get_product_by_sku(
 def update_product(
     product_id: int,
     product: ProductUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db),
+    _: dict = Depends(deps.require_roles(["admin"])),
 ):
     """Update a product"""
     # If updating SKU, check it doesn't conflict
@@ -128,7 +130,8 @@ def update_product(
 @router.delete("/{product_id}", response_model=ProductDeleteResponse)
 def delete_product(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(deps.get_db),
+    _: dict = Depends(deps.require_roles(["admin"])),
 ):
     """Delete a product"""
     product = crud_product.delete_product(db, product_id=product_id)
