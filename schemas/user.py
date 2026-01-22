@@ -1,6 +1,6 @@
 # schemas/user.py
-from pydantic import BaseModel, EmailStr, constr
-from typing import Optional, Literal
+from pydantic import BaseModel, EmailStr, Field, constr
+from typing import Optional, Literal, List
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -62,7 +62,7 @@ class TokenResponse(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role: Literal["user", "admin", "superuser"]
+    role: Literal["user", "admin"]
 
 
 class OtpVerifyResponse(BaseModel):
@@ -70,3 +70,64 @@ class OtpVerifyResponse(BaseModel):
     status_code: int
     message: str
     reset_token: str
+
+
+class UserProfile(BaseModel):
+    company: Optional[str] = None
+    country: Optional[str] = None
+    contact: Optional[str] = None
+
+
+class UserManagementCreate(BaseModel):
+    full_name: str = Field(..., alias="fullName")
+    email: EmailStr
+    password: str
+    role: Literal["user", "admin"]
+    plan: str
+    billing: str
+    status: str
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class UserManagementUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, alias="fullName")
+    role: Optional[Literal["user", "admin"]] = None
+    plan: Optional[str] = None
+    billing: Optional[str] = None
+    status: Optional[str] = None
+    company: Optional[str] = None
+    country: Optional[str] = None
+    contact: Optional[str] = None
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class UserListItem(BaseModel):
+    id: int
+    full_name: str = Field(..., alias="fullName")
+    email: EmailStr
+    role: str
+    plan: Optional[str] = None
+    billing: Optional[str] = None
+    status: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        allow_population_by_field_name = True
+
+
+class UserDetail(UserListItem):
+    profile: Optional[UserProfile] = None
+
+
+class UserListResponse(BaseModel):
+    users: List[UserListItem]
+    totalUsers: int
+    page: int
+
+
+class UserDeleteResponse(BaseModel):
+    success: bool
