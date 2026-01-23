@@ -62,7 +62,7 @@ class TokenResponse(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role: Literal["user", "admin"]
+    role: Literal["user", "admin", "superuser"]
 
 
 class OtpVerifyResponse(BaseModel):
@@ -82,7 +82,7 @@ class UserManagementCreate(BaseModel):
     full_name: str = Field(..., alias="fullName")
     email: EmailStr
     password: str
-    role: Literal["user", "admin"]
+    role: Literal["user", "admin", "superuser"]
     plan: str
     billing: str
     status: str
@@ -93,7 +93,7 @@ class UserManagementCreate(BaseModel):
 
 class UserManagementUpdate(BaseModel):
     full_name: Optional[str] = Field(None, alias="fullName")
-    role: Optional[Literal["user", "admin"]] = None
+    role: Optional[Literal["user", "admin", "superuser"]] = None
     plan: Optional[str] = None
     billing: Optional[str] = None
     status: Optional[str] = None

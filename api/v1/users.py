@@ -57,7 +57,7 @@ def list_users(
         raise HTTPException(status_code=400, detail="Invalid pagination values")
     if orderBy.lower() not in {"asc", "desc"}:
         raise HTTPException(status_code=400, detail="Invalid orderBy value")
-    if role and role not in {"user", "admin"}:
+    if role and role not in {"user", "admin", "superuser"}:
         raise HTTPException(status_code=400, detail="Invalid role filter")
     if not current_user.is_superuser and role and role != "user":
         raise HTTPException(status_code=403, detail="Not enough permissions")
@@ -111,12 +111,14 @@ def create_user(
     existing = crud_user.get_user_by_email(db, email=user_in.email)
     if existing:
         raise HTTPException(status_code=409, detail="Email already exists")
+    is_superuser = user_in.role == "superuser"
     user = crud_user.create_user_with_details(
         db,
         email=user_in.email,
         password=user_in.password,
         full_name=user_in.full_name,
         role=user_in.role,
+        is_superuser=is_superuser,
         plan=user_in.plan,
         billing=user_in.billing,
         status=user_in.status,
@@ -145,7 +147,7 @@ def update_user(
 
     updates = user_in.dict(exclude_unset=True, by_alias=False)
     if "role" in updates and updates["role"] is not None:
-        updates["is_superuser"] = False
+        updates["is_superuser"] = updates["role"] == "superuser"
     updated = crud_user.update_user_details(db, user_id=user_id, updates=updates)
     return _serialize_user_detail(updated)
 
@@ -183,6 +185,7 @@ def create_admin(
         password=user_in.password,
         full_name=user_in.full_name,
         role="admin",
+        is_superuser=False,
         plan=user_in.plan,
         billing=user_in.billing,
         status=user_in.status,
@@ -200,7 +203,10 @@ def update_user_role(
     db: Session = Depends(deps.get_db),
     _: User = Depends(deps.require_superuser),
 ):
-    if role_in.role == "admin":
+    if role_in.role == "superuser":
+        role = "superuser"
+        is_superuser = True
+    elif role_in.role == "admin":
         role = "admin"
         is_superuser = False
     else:
@@ -211,4 +217,32 @@ def update_user_role(
     )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    return _serialize_user_detail(user)
+
+
+@router.post("/superusers", response_model=UserDetail, status_code=status.HTTP_201_CREATED)
+def create_superuser(
+    user_in: UserManagementCreate,
+    db: Session = Depends(deps.get_db),
+    _: User = Depends(deps.require_superuser),
+):
+    if user_in.role != "superuser":
+        raise HTTPException(status_code=400, detail="Role must be superuser")
+    existing = crud_user.get_user_by_email(db, email=user_in.email)
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already exists")
+    user = crud_user.create_user_with_details(
+        db,
+        email=user_in.email,
+        password=user_in.password,
+        full_name=user_in.full_name,
+        role="superuser",
+        is_superuser=True,
+        plan=user_in.plan,
+        billing=user_in.billing,
+        status=user_in.status,
+        company=None,
+        country=None,
+        contact=None,
+    )
     return _serialize_user_detail(user)

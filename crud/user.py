@@ -42,7 +42,10 @@ def get_users_filtered(
         query = query.filter(User.role == "user", User.is_superuser == False)
 
     if role:
-        query = query.filter(User.role == role, User.is_superuser == False)
+        if role == "superuser":
+            query = query.filter(User.is_superuser == True)
+        else:
+            query = query.filter(User.role == role, User.is_superuser == False)
     if plan:
         query = query.filter(User.plan == plan)
     if status:
@@ -163,6 +166,7 @@ def create_user_with_details(
     password: str,
     full_name: str,
     role: str,
+    is_superuser: bool = False,
     plan: Optional[str] = None,
     billing: Optional[str] = None,
     status: Optional[str] = None,
@@ -178,7 +182,7 @@ def create_user_with_details(
         email=email,
         hashed_password=hashed_password,
         role=role,
-        is_superuser=False,
+        is_superuser=is_superuser,
         privacy_policy_accepted=False,
         plan=plan,
         billing=billing,

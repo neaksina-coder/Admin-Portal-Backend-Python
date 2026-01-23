@@ -7,9 +7,10 @@ This document defines the backend endpoints and rules for managing users.
 System roles:
 - `user`
 - `admin`
+- `superuser`
 
 Notes:
-- `superuser` is a flag/privilege (e.g. `is_superuser = true`), not a selectable role in the UI.
+- `superuser` is represented by `is_superuser = true` and `role = "superuser"` in the API.
 - When `is_superuser = true`, treat the user as full access.
 
 ## Access Rules
@@ -27,7 +28,7 @@ Returns a list of users with filters and pagination.
 
 Query params:
 - `q`: string (search by name/email)
-- `role`: `user | admin`
+- `role`: `user | admin | superuser`
 - `plan`: string (e.g. basic/team/enterprise)
 - `status`: string (e.g. active/inactive/pending)
 - `page`: number
@@ -89,7 +90,7 @@ Response (example):
 `POST /users`
 
 Rules:
-- Superuser: can create `admin` or `user`.
+- Superuser: can create `superuser`, `admin`, or `user`.
 - Admin: can create only `user`.
 
 Body:
@@ -213,13 +214,51 @@ Response:
 }
 ```
 
+## Create Superuser (Superuser only)
+
+`POST /users/superusers`
+
+Rules:
+- Superuser only.
+
+Body:
+```json
+{
+  "fullName": "Super User",
+  "email": "super@example.com",
+  "password": "SuperPass123",
+  "role": "superuser",
+  "plan": "team",
+  "billing": "Manual-PayPal",
+  "status": "active"
+}
+```
+
+Response:
+```json
+{
+  "id": 11,
+  "fullName": "Super User",
+  "email": "super@example.com",
+  "role": "superuser",
+  "plan": "team",
+  "billing": "Manual-PayPal",
+  "status": "active",
+  "profile": {
+    "company": null,
+    "country": null,
+    "contact": null
+  }
+}
+```
+
 ## Role Update (Superuser only)
 
 `PUT /users/{id}/role`
 
 Rules:
 - Superuser only.
-- Allowed roles: `user`, `admin`
+- Allowed roles: `user`, `admin`, `superuser`
 
 Body:
 ```json

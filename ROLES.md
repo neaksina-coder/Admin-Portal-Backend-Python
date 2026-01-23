@@ -23,6 +23,7 @@ Includes everything a `user` can do, plus:
 Includes everything an `admin` can do, plus:
 
 - Admin management: create admins.
+- Superuser management: create superusers.
 - Role management: update any user's role (user/admin/superuser).
 
 ## Notes
@@ -61,3 +62,4 @@ Includes everything an `admin` can do, plus:
 
 - `POST /users/admins`
 - `PUT /users/{user_id}/role`
+- `POST /users/superusers`
