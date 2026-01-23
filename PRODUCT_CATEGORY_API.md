@@ -25,7 +25,7 @@ Body (CategoryCreate):
   "name": "Beverages",
   "slug": "beverages",
   "description": "Drinks and refreshments",
-  "status": "active"
+    
 }
 ```
 Response (CategoryResponse):

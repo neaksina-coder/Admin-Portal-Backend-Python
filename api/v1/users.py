@@ -5,6 +5,7 @@ from typing import Optional
 
 from api import deps
 from crud import user as crud_user
+from models.user_lookups import UserRole, UserPlan, UserStatus
 from schemas.user import (
     User,
     UserRoleUpdate,
@@ -16,6 +17,25 @@ from schemas.user import (
 )
 
 router = APIRouter()
+
+USER_FILTERS_RESPONSE = {
+    "roles": [
+        {"label": "User", "value": "user"},
+        {"label": "Admin", "value": "admin"},
+        {"label": "Superuser", "value": "superuser"},
+    ],
+    "plans": [
+        {"label": "Basic", "value": "basic"},
+        {"label": "Company", "value": "company"},
+        {"label": "Enterprise", "value": "enterprise"},
+        {"label": "Team", "value": "team"},
+    ],
+    "statuses": [
+        {"label": "Active", "value": "active"},
+        {"label": "Inactive", "value": "inactive"},
+        {"label": "Pending", "value": "pending"},
+    ],
+}
 
 
 def _serialize_user_list_item(user):
@@ -82,6 +102,46 @@ def list_users(
         "users": [_serialize_user_list_item(user) for user in users],
         "totalUsers": total,
         "page": page,
+    }
+
+
+@router.get("/filters")
+def get_user_filters(
+    db: Session = Depends(deps.get_db),
+    _: User = Depends(deps.require_roles(["admin"])),
+):
+    roles = (
+        db.query(UserRole)
+        .order_by(UserRole.sort_order.asc(), UserRole.label.asc())
+        .all()
+    )
+    plans = (
+        db.query(UserPlan)
+        .order_by(UserPlan.sort_order.asc(), UserPlan.label.asc())
+        .all()
+    )
+    statuses = (
+        db.query(UserStatus)
+        .order_by(UserStatus.sort_order.asc(), UserStatus.label.asc())
+        .all()
+    )
+
+    return {
+        "roles": [
+            {"label": role.label, "value": role.value} for role in roles
+        ]
+        if roles
+        else USER_FILTERS_RESPONSE["roles"],
+        "plans": [
+            {"label": plan.label, "value": plan.value} for plan in plans
+        ]
+        if plans
+        else USER_FILTERS_RESPONSE["plans"],
+        "statuses": [
+            {"label": status.label, "value": status.value} for status in statuses
+        ]
+        if statuses
+        else USER_FILTERS_RESPONSE["statuses"],
     }
 
 

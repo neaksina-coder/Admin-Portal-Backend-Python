@@ -4,11 +4,82 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from models.user import User
+from models.user_lookups import UserRole, UserPlan, UserStatus, UserBilling
 from schemas.user import UserCreate
 from typing import Optional, Tuple, List
 from utils.security import get_password_hash
 from datetime import datetime
 import re
+
+ROLE_SORT_ORDER = {"user": 1, "admin": 2, "superuser": 3}
+PLAN_SORT_ORDER = {"basic": 1, "company": 2, "enterprise": 3, "team": 4}
+STATUS_SORT_ORDER = {"active": 1, "inactive": 2, "pending": 3}
+
+
+def _humanize_value(value: str) -> str:
+    if not value:
+        return value
+    return value.replace("_", " ").replace("-", " ").strip().title()
+
+
+def _get_or_create_lookup(db: Session, model, value: Optional[str], sort_order: int = 0):
+    if value is None:
+        return None
+    existing = db.query(model).filter(model.value == value).first()
+    if existing:
+        return existing
+    obj = model(value=value, label=_humanize_value(value), sort_order=sort_order)
+    db.add(obj)
+    db.flush()
+    return obj
+
+
+def _sync_user_lookups(db: Session, user: User, updates: Optional[dict] = None) -> None:
+    updates = updates or {}
+
+    if "role" in updates:
+        role_val = updates.get("role")
+        role_ref = _get_or_create_lookup(
+            db, UserRole, role_val, ROLE_SORT_ORDER.get(role_val, 0)
+        )
+        user.role_id = role_ref.id if role_ref else None
+    elif user.role and user.role_id is None:
+        role_ref = _get_or_create_lookup(
+            db, UserRole, user.role, ROLE_SORT_ORDER.get(user.role, 0)
+        )
+        user.role_id = role_ref.id if role_ref else None
+
+    if "plan" in updates:
+        plan_val = updates.get("plan")
+        plan_ref = _get_or_create_lookup(
+            db, UserPlan, plan_val, PLAN_SORT_ORDER.get(plan_val, 0)
+        )
+        user.plan_id = plan_ref.id if plan_ref else None
+    elif user.plan and user.plan_id is None:
+        plan_ref = _get_or_create_lookup(
+            db, UserPlan, user.plan, PLAN_SORT_ORDER.get(user.plan, 0)
+        )
+        user.plan_id = plan_ref.id if plan_ref else None
+
+    if "status" in updates:
+        status_val = updates.get("status")
+        status_ref = _get_or_create_lookup(
+            db, UserStatus, status_val, STATUS_SORT_ORDER.get(status_val, 0)
+        )
+        user.status_id = status_ref.id if status_ref else None
+    elif user.status and user.status_id is None:
+        status_ref = _get_or_create_lookup(
+            db, UserStatus, user.status, STATUS_SORT_ORDER.get(user.status, 0)
+        )
+        user.status_id = status_ref.id if status_ref else None
+
+    if "billing" in updates:
+        billing_val = updates.get("billing")
+        billing_ref = _get_or_create_lookup(db, UserBilling, billing_val, 0)
+        user.billing_id = billing_ref.id if billing_ref else None
+    elif user.billing and user.billing_id is None:
+        billing_ref = _get_or_create_lookup(db, UserBilling, user.billing, 0)
+        user.billing_id = billing_ref.id if billing_ref else None
 
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
@@ -100,6 +171,7 @@ def create_user(
     )
     try:
         db.add(db_user)
+        _sync_user_lookups(db, db_user, {"role": db_user.role})
         db.commit()
         db.refresh(db_user)
     except IntegrityError:
@@ -193,6 +265,11 @@ def create_user_with_details(
     )
     try:
         db.add(db_user)
+        _sync_user_lookups(
+            db,
+            db_user,
+            {"role": role, "plan": plan, "billing": billing, "status": status or "active"},
+        )
         db.commit()
         db.refresh(db_user)
     except IntegrityError:
@@ -213,6 +290,7 @@ def update_user_role(db: Session, user_id: int, role: str, is_superuser: bool):
         return None
     db_user.role = role
     db_user.is_superuser = is_superuser
+    _sync_user_lookups(db, db_user, {"role": role})
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -225,6 +303,7 @@ def update_user_details(db: Session, user_id: int, updates: dict) -> Optional[Us
         return None
     for key, value in updates.items():
         setattr(db_user, key, value)
+    _sync_user_lookups(db, db_user, updates)
     db.commit()
     db.refresh(db_user)
     return db_user

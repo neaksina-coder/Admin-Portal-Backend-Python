@@ -1,5 +1,6 @@
 # models/user.py
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from db.base_class import Base  # ← Change this from db.base to db.base_class
 
 class User(Base):
@@ -19,6 +20,15 @@ class User(Base):
     plan = Column(String, nullable=True)
     billing = Column(String, nullable=True)
     status = Column(String, default="active", nullable=False)
+    role_id = Column(Integer, ForeignKey("user_roles.id"), nullable=True, index=True)
+    plan_id = Column(Integer, ForeignKey("user_plans.id"), nullable=True, index=True)
+    status_id = Column(Integer, ForeignKey("user_statuses.id"), nullable=True, index=True)
+    billing_id = Column(Integer, ForeignKey("user_billings.id"), nullable=True, index=True)
     company = Column(String, nullable=True)
     country = Column(String, nullable=True)
     contact = Column(String, nullable=True)
+
+    role_ref = relationship("UserRole", back_populates="users")
+    plan_ref = relationship("UserPlan", back_populates="users")
+    status_ref = relationship("UserStatus", back_populates="users")
+    billing_ref = relationship("UserBilling", back_populates="users")
