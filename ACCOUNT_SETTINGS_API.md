@@ -70,6 +70,115 @@ Response:
 }
 ```
 
+## Update Password
+
+`PUT /users/me/password`
+
+Body (JSON):
+```json
+{
+  "currentPassword": "OldPass123",
+  "newPassword": "NewPass123",
+  "confirmPassword": "NewPass123"
+}
+```
+
+Password rules:
+- Minimum 8 characters
+- At least one lowercase letter
+- At least one uppercase letter
+- At least one number, symbol, or whitespace
+
+Error messages (examples):
+- Missing lowercase: `Password must include at least one lowercase letter`
+- Missing uppercase: `Password must include at least one uppercase letter`
+- Missing number/symbol/whitespace: `Password must include at least one number, symbol, or whitespace`
+- Wrong current password: `Current password is incorrect`
+- Mismatch: `Passwords do not match`
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Password updated successfully"
+}
+```
+
+## Two-Factor Authentication (2FA)
+
+### Get 2FA Status
+
+`GET /users/me/2fa`
+
+Response:
+```json
+{
+  "enabled": false,
+  "method": null,
+  "smsPhone": null,
+  "smsVerified": false
+}
+```
+
+### Select 2FA Method
+
+`POST /users/me/2fa/method`
+
+Body:
+```json
+{ "method": "authenticator" }
+```
+
+Response: same as status.
+
+### Authenticator App Setup
+
+`POST /users/me/2fa/authenticator/setup`
+
+Response:
+```json
+{
+  "secret": "BASE32SECRET",
+  "otpauthUrl": "otpauth://totp/Sina%20Neak:email@example.com?secret=BASE32SECRET&issuer=Sina%20Neak"
+}
+```
+
+### Authenticator App Verify
+
+`POST /users/me/2fa/authenticator/verify`
+
+Body:
+```json
+{ "code": "123456" }
+```
+
+Response: same as status.
+
+### SMS Start
+
+`POST /users/me/2fa/sms/start`
+
+Body:
+```json
+{ "phone": "+11234567890" }
+```
+
+Response: same as status.
+
+### SMS Verify
+
+`POST /users/me/2fa/sms/verify`
+
+Body:
+```json
+{ "code": "123456" }
+```
+
+Response: same as status.
+
+Notes:
+- SMS sending is not integrated yet; only code validation is implemented.
+
 ## Notes
 
 - `profileImage` in the response is a full URL you can open in the browser.

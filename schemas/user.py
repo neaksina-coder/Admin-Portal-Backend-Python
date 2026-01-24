@@ -1,6 +1,7 @@
 # schemas/user.py
-from pydantic import BaseModel, EmailStr, Field, constr
+from pydantic import BaseModel, EmailStr, Field, constr, field_validator
 from typing import Optional, Literal, List
+import re
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -105,6 +106,60 @@ class AccountSettingsResponse(BaseModel):
     class Config:
         from_attributes = True
         allow_population_by_field_name = True
+
+
+class AccountPasswordUpdate(BaseModel):
+    current_password: str = Field(..., alias="currentPassword")
+    new_password: constr(min_length=8) = Field(..., alias="newPassword")
+    confirm_password: constr(min_length=8) = Field(..., alias="confirmPassword")
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str):
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Password must include at least one lowercase letter")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Password must include at least one uppercase letter")
+        if not re.search(r"[\d\s\W]", value):
+            raise ValueError("Password must include at least one number, symbol, or whitespace")
+        return value
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class TwoFactorStatusResponse(BaseModel):
+    enabled: bool
+    method: Optional[Literal["authenticator", "sms"]] = None
+    sms_phone: Optional[str] = Field(None, alias="smsPhone")
+    sms_verified: bool = Field(False, alias="smsVerified")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class TwoFactorMethodRequest(BaseModel):
+    method: Literal["authenticator", "sms"]
+
+
+class TwoFactorTotpSetupResponse(BaseModel):
+    secret: str
+    otpauth_url: str = Field(..., alias="otpauthUrl")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class TwoFactorTotpVerifyRequest(BaseModel):
+    code: str
+
+
+class TwoFactorSmsStartRequest(BaseModel):
+    phone: str
+
+
+class TwoFactorSmsVerifyRequest(BaseModel):
+    code: str
 
 
 class UserManagementCreate(BaseModel):
