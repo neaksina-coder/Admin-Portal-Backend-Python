@@ -76,6 +76,35 @@ class UserProfile(BaseModel):
     company: Optional[str] = None
     country: Optional[str] = None
     contact: Optional[str] = None
+    profile_image: Optional[str] = Field(None, alias="profileImage")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class AccountSettingsUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, alias="fullName")
+    email: Optional[EmailStr] = None
+    company: Optional[str] = None
+    country: Optional[str] = None
+    contact: Optional[str] = None
+    profile_image: Optional[str] = Field(None, alias="profileImage")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class AccountSettingsResponse(BaseModel):
+    id: int
+    full_name: Optional[str] = Field(None, alias="fullName")
+    email: EmailStr
+    role: str
+    is_superuser: bool = Field(..., alias="isSuperuser")
+    profile: UserProfile
+
+    class Config:
+        from_attributes = True
+        allow_population_by_field_name = True
 
 
 class UserManagementCreate(BaseModel):

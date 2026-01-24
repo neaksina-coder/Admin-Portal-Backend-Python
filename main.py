@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from db.base import Base
@@ -6,6 +7,7 @@ from db.session import engine
 from api.v1.api_router import api_router
 import time
 from sqlalchemy.exc import OperationalError
+import os
 
 MAX_RETRIES = 5
 RETRY_DELAY = 5 # seconds
@@ -50,6 +52,8 @@ def start_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    os.makedirs("uploads/profile_images", exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
     include_router(app)
     return app
 

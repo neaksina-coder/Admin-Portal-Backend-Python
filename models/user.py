@@ -27,6 +27,7 @@ class User(Base):
     company = Column(String, nullable=True)
     country = Column(String, nullable=True)
     contact = Column(String, nullable=True)
+    profile_image = Column(String, nullable=True)
 
     role_ref = relationship("UserRole", back_populates="users")
     plan_ref = relationship("UserPlan", back_populates="users")

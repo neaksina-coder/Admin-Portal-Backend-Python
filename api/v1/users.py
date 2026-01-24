@@ -1,7 +1,11 @@
 # api/v1/users.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from typing import Optional
+from pydantic import EmailStr
+import os
+import shutil
+import uuid
 
 from api import deps
 from crud import user as crud_user
@@ -14,6 +18,7 @@ from schemas.user import (
     UserListResponse,
     UserDetail,
     UserDeleteResponse,
+    AccountSettingsResponse,
 )
 
 router = APIRouter()
@@ -50,14 +55,48 @@ def _serialize_user_list_item(user):
     }
 
 
-def _serialize_user_detail(user):
+def _serialize_user_detail(user, base_url: Optional[str] = None):
+    profile_image = user.profile_image
+    if base_url and profile_image and profile_image.startswith("/uploads/"):
+        profile_image = f"{base_url.rstrip('/')}{profile_image}"
     data = _serialize_user_list_item(user)
     data["profile"] = {
         "company": user.company,
         "country": user.country,
         "contact": user.contact,
+        "profileImage": profile_image,
     }
     return data
+
+
+def _serialize_account_settings(user, base_url: Optional[str] = None):
+    profile_image = user.profile_image
+    if base_url and profile_image and profile_image.startswith("/uploads/"):
+        profile_image = f"{base_url.rstrip('/')}{profile_image}"
+    return {
+        "id": user.id,
+        "fullName": user.full_name or user.username,
+        "email": user.email,
+        "role": "superuser" if user.is_superuser else user.role,
+        "isSuperuser": user.is_superuser,
+        "profile": {
+            "company": user.company,
+            "country": user.country,
+            "contact": user.contact,
+            "profileImage": profile_image,
+        },
+    }
+
+
+def _save_profile_image(upload: UploadFile) -> str:
+    upload_dir = os.path.join("uploads", "profile_images")
+    os.makedirs(upload_dir, exist_ok=True)
+    _, ext = os.path.splitext(upload.filename or "")
+    filename = f"{uuid.uuid4().hex}{ext.lower()}"
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(upload.file, buffer)
+    return f"/uploads/profile_images/{filename}"
 
 
 @router.get("/", response_model=UserListResponse)
@@ -145,9 +184,52 @@ def get_user_filters(
     }
 
 
+@router.get("/me", response_model=AccountSettingsResponse)
+def get_account_settings(
+    request: Request,
+    current_user: User = Depends(deps.require_roles(["admin"])),
+):
+    return _serialize_account_settings(current_user, base_url=str(request.base_url))
+
+
+@router.put("/me", response_model=AccountSettingsResponse)
+def update_account_settings(
+    request: Request,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.require_roles(["admin"])),
+    fullName: Optional[str] = Form(None),
+    email: Optional[EmailStr] = Form(None),
+    company: Optional[str] = Form(None),
+    country: Optional[str] = Form(None),
+    contact: Optional[str] = Form(None),
+    profileImage: Optional[UploadFile] = File(None),
+):
+    updates = {}
+    if fullName is not None:
+        updates["full_name"] = fullName
+    if email is not None:
+        if email != current_user.email:
+            existing = crud_user.get_user_by_email(db, email=email)
+            if existing and existing.id != current_user.id:
+                raise HTTPException(status_code=409, detail="Email already exists")
+        updates["email"] = email
+    if company is not None:
+        updates["company"] = company
+    if country is not None:
+        updates["country"] = country
+    if contact is not None:
+        updates["contact"] = contact
+    if profileImage is not None:
+        updates["profile_image"] = _save_profile_image(profileImage)
+
+    updated = crud_user.update_user_details(db, user_id=current_user.id, updates=updates)
+    return _serialize_account_settings(updated, base_url=str(request.base_url))
+
+
 @router.get("/{user_id}", response_model=UserDetail)
 def get_user_detail(
     user_id: int,
+    request: Request,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_roles(["admin"])),
 ):
@@ -157,12 +239,13 @@ def get_user_detail(
     if not current_user.is_superuser:
         if user.is_superuser or user.role != "user":
             raise HTTPException(status_code=403, detail="Not enough permissions")
-    return _serialize_user_detail(user)
+    return _serialize_user_detail(user, base_url=str(request.base_url))
 
 
 @router.post("/", response_model=UserDetail, status_code=status.HTTP_201_CREATED)
 def create_user(
     user_in: UserManagementCreate,
+    request: Request,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_roles(["admin"])),
 ):
@@ -186,13 +269,14 @@ def create_user(
         country=None,
         contact=None,
     )
-    return _serialize_user_detail(user)
+    return _serialize_user_detail(user, base_url=str(request.base_url))
 
 
 @router.put("/{user_id}", response_model=UserDetail)
 def update_user(
     user_id: int,
     user_in: UserManagementUpdate,
+    request: Request,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_roles(["admin"])),
 ):
@@ -209,7 +293,7 @@ def update_user(
     if "role" in updates and updates["role"] is not None:
         updates["is_superuser"] = updates["role"] == "superuser"
     updated = crud_user.update_user_details(db, user_id=user_id, updates=updates)
-    return _serialize_user_detail(updated)
+    return _serialize_user_detail(updated, base_url=str(request.base_url))
 
 
 @router.delete("/{user_id}", response_model=UserDeleteResponse)
@@ -231,6 +315,7 @@ def delete_user(
 @router.post("/admins", response_model=UserDetail, status_code=status.HTTP_201_CREATED)
 def create_admin(
     user_in: UserManagementCreate,
+    request: Request,
     db: Session = Depends(deps.get_db),
     _: User = Depends(deps.require_superuser),
 ):
@@ -253,13 +338,14 @@ def create_admin(
         country=None,
         contact=None,
     )
-    return _serialize_user_detail(user)
+    return _serialize_user_detail(user, base_url=str(request.base_url))
 
 
 @router.put("/{user_id}/role", response_model=UserDetail)
 def update_user_role(
     user_id: int,
     role_in: UserRoleUpdate,
+    request: Request,
     db: Session = Depends(deps.get_db),
     _: User = Depends(deps.require_superuser),
 ):
@@ -277,12 +363,13 @@ def update_user_role(
     )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return _serialize_user_detail(user)
+    return _serialize_user_detail(user, base_url=str(request.base_url))
 
 
 @router.post("/superusers", response_model=UserDetail, status_code=status.HTTP_201_CREATED)
 def create_superuser(
     user_in: UserManagementCreate,
+    request: Request,
     db: Session = Depends(deps.get_db),
     _: User = Depends(deps.require_superuser),
 ):
@@ -305,4 +392,4 @@ def create_superuser(
         country=None,
         contact=None,
     )
-    return _serialize_user_detail(user)
+    return _serialize_user_detail(user, base_url=str(request.base_url))
