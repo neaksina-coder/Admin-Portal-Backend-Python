@@ -17,8 +17,6 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
     OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", 10))
     OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", 5))
-    SMS_OTP_EXPIRE_MINUTES = int(os.getenv("SMS_OTP_EXPIRE_MINUTES", 10))
-    SMS_OTP_MAX_ATTEMPTS = int(os.getenv("SMS_OTP_MAX_ATTEMPTS", 5))
     RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", 15))
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

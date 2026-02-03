@@ -11,7 +11,14 @@ from utils.security import get_password_hash
 from datetime import datetime
 import re
 
-ROLE_SORT_ORDER = {"user": 1, "admin": 2, "superuser": 3}
+ROLE_SORT_ORDER = {
+    "user": 1,
+    "customer_staff": 2,
+    "customer_owner": 3,
+    "support": 4,
+    "admin": 5,
+    "superuser": 6,
+}
 PLAN_SORT_ORDER = {"basic": 1, "company": 2, "enterprise": 3, "team": 4}
 STATUS_SORT_ORDER = {"active": 1, "inactive": 2, "pending": 3}
 
@@ -168,6 +175,7 @@ def create_user(
         privacy_policy_accepted=user.privacy_policy_accepted,
         role=role if role is not None else "user",
         is_superuser=is_superuser if is_superuser is not None else False,
+        business_id=user.business_id,
     )
     try:
         db.add(db_user)
@@ -245,6 +253,7 @@ def create_user_with_details(
     company: Optional[str] = None,
     country: Optional[str] = None,
     contact: Optional[str] = None,
+    business_id: Optional[int] = None,
 ) -> User:
     hashed_password = get_password_hash(password)
     username = _generate_unique_username(db, email)
@@ -262,6 +271,7 @@ def create_user_with_details(
         company=company,
         country=country,
         contact=contact,
+        business_id=business_id,
     )
     try:
         db.add(db_user)

@@ -1,10 +1,18 @@
 # api/v1/api_router.py
 from fastapi import APIRouter
-from api.v1 import auth, categories, users, products
+from api.v1 import auth, users, businesses, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos
 
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
-api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
-api_router.include_router(products.router, prefix="/products", tags=["products"])
+api_router.include_router(businesses.router, prefix="/businesses", tags=["businesses"])
+api_router.include_router(plans.router, prefix="/plans", tags=["plans"])
+api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
+api_router.include_router(customers.router, prefix="/customers", tags=["customers"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(ai_insights.router, prefix="/ai-insights", tags=["ai-insights"])
+api_router.include_router(sales.router, prefix="/sales", tags=["sales"])
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(marketing_campaigns.router, prefix="/marketing", tags=["marketing"])
+api_router.include_router(promos.router, prefix="/promos", tags=["promos"])

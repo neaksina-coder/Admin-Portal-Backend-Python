@@ -6,16 +6,11 @@ from pydantic import EmailStr
 import os
 import shutil
 import uuid
-import hashlib
-import secrets
-from datetime import datetime, timedelta, timezone
-import pyotp
 
 from api import deps
 from crud import user as crud_user
 from utils.security import verify_password, get_password_hash
 from models.user_lookups import UserRole, UserPlan, UserStatus
-from core.config import settings
 from schemas.user import (
     User,
     UserRoleUpdate,
@@ -26,12 +21,6 @@ from schemas.user import (
     UserDeleteResponse,
     AccountSettingsResponse,
     AccountPasswordUpdate,
-    TwoFactorStatusResponse,
-    TwoFactorMethodRequest,
-    TwoFactorTotpSetupResponse,
-    TwoFactorTotpVerifyRequest,
-    TwoFactorSmsStartRequest,
-    TwoFactorSmsVerifyRequest,
 )
 
 router = APIRouter()
@@ -39,6 +28,9 @@ router = APIRouter()
 USER_FILTERS_RESPONSE = {
     "roles": [
         {"label": "User", "value": "user"},
+        {"label": "Customer Owner", "value": "customer_owner"},
+        {"label": "Customer Staff", "value": "customer_staff"},
+        {"label": "Support", "value": "support"},
         {"label": "Admin", "value": "admin"},
         {"label": "Superuser", "value": "superuser"},
     ],
@@ -129,7 +121,14 @@ def list_users(
         raise HTTPException(status_code=400, detail="Invalid pagination values")
     if orderBy.lower() not in {"asc", "desc"}:
         raise HTTPException(status_code=400, detail="Invalid orderBy value")
-    if role and role not in {"user", "admin", "superuser"}:
+    if role and role not in {
+        "user",
+        "admin",
+        "superuser",
+        "customer_owner",
+        "customer_staff",
+        "support",
+    }:
         raise HTTPException(status_code=400, detail="Invalid role filter")
     if not current_user.is_superuser and role and role != "user":
         raise HTTPException(status_code=403, detail="Not enough permissions")
@@ -257,148 +256,6 @@ def update_account_password(
     return {"success": True, "message": "Password updated successfully"}
 
 
-@router.get("/me/2fa", response_model=TwoFactorStatusResponse)
-def get_two_factor_status(
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    return {
-        "enabled": current_user.two_factor_enabled,
-        "method": current_user.two_factor_method,
-        "smsPhone": current_user.sms_phone,
-        "smsVerified": current_user.sms_verified,
-    }
-
-
-@router.post("/me/2fa/method", response_model=TwoFactorStatusResponse)
-def select_two_factor_method(
-    method_in: TwoFactorMethodRequest,
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    current_user.two_factor_method = method_in.method
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-    return {
-        "enabled": current_user.two_factor_enabled,
-        "method": current_user.two_factor_method,
-        "smsPhone": current_user.sms_phone,
-        "smsVerified": current_user.sms_verified,
-    }
-
-
-@router.post("/me/2fa/authenticator/setup", response_model=TwoFactorTotpSetupResponse)
-def setup_totp(
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    secret = pyotp.random_base32()
-    current_user.totp_secret = secret
-    current_user.two_factor_method = "authenticator"
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-
-    issuer = "Sina Neak"
-    otpauth_url = pyotp.TOTP(secret).provisioning_uri(
-        name=current_user.email, issuer_name=issuer
-    )
-    return {"secret": secret, "otpauthUrl": otpauth_url}
-
-
-@router.post("/me/2fa/authenticator/verify", response_model=TwoFactorStatusResponse)
-def verify_totp(
-    verify_in: TwoFactorTotpVerifyRequest,
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    if not current_user.totp_secret:
-        raise HTTPException(status_code=400, detail="Authenticator not set up")
-    totp = pyotp.TOTP(current_user.totp_secret)
-    if not totp.verify(verify_in.code):
-        raise HTTPException(status_code=400, detail="Invalid authentication code")
-    current_user.two_factor_enabled = True
-    current_user.two_factor_method = "authenticator"
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-    return {
-        "enabled": current_user.two_factor_enabled,
-        "method": current_user.two_factor_method,
-        "smsPhone": current_user.sms_phone,
-        "smsVerified": current_user.sms_verified,
-    }
-
-
-@router.post("/me/2fa/sms/start", response_model=TwoFactorStatusResponse)
-def start_sms_2fa(
-    sms_in: TwoFactorSmsStartRequest,
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    code = f"{secrets.randbelow(1_000_000):06d}"
-    otp_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.SMS_OTP_EXPIRE_MINUTES
-    )
-    current_user.sms_phone = sms_in.phone
-    current_user.sms_verified = False
-    current_user.sms_otp_hash = otp_hash
-    current_user.sms_otp_expires = expires_at
-    current_user.sms_otp_attempts = 0
-    current_user.two_factor_method = "sms"
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-
-    # TODO: integrate real SMS provider; for now we only store the code hash.
-    return {
-        "enabled": current_user.two_factor_enabled,
-        "method": current_user.two_factor_method,
-        "smsPhone": current_user.sms_phone,
-        "smsVerified": current_user.sms_verified,
-    }
-
-
-@router.post("/me/2fa/sms/verify", response_model=TwoFactorStatusResponse)
-def verify_sms_2fa(
-    sms_in: TwoFactorSmsVerifyRequest,
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
-):
-    if not current_user.sms_otp_hash or not current_user.sms_otp_expires:
-        raise HTTPException(status_code=400, detail="SMS verification not started")
-    now = datetime.now(timezone.utc)
-    expires_at = current_user.sms_otp_expires
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < now or current_user.sms_otp_attempts >= settings.SMS_OTP_MAX_ATTEMPTS:
-        raise HTTPException(status_code=400, detail="Invalid or expired code")
-
-    otp_hash = hashlib.sha256(sms_in.code.encode("utf-8")).hexdigest()
-    if otp_hash != current_user.sms_otp_hash:
-        current_user.sms_otp_attempts += 1
-        db.add(current_user)
-        db.commit()
-        raise HTTPException(status_code=400, detail="Invalid or expired code")
-
-    current_user.sms_verified = True
-    current_user.two_factor_enabled = True
-    current_user.two_factor_method = "sms"
-    current_user.sms_otp_hash = None
-    current_user.sms_otp_expires = None
-    current_user.sms_otp_attempts = 0
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-    return {
-        "enabled": current_user.two_factor_enabled,
-        "method": current_user.two_factor_method,
-        "smsPhone": current_user.sms_phone,
-        "smsVerified": current_user.sms_verified,
-    }
-
-
 @router.get("/{user_id}", response_model=UserDetail)
 def get_user_detail(
     user_id: int,
@@ -441,6 +298,7 @@ def create_user(
         company=None,
         country=None,
         contact=None,
+        business_id=user_in.business_id,
     )
     return _serialize_user_detail(user, base_url=str(request.base_url))
 
@@ -510,6 +368,7 @@ def create_admin(
         company=None,
         country=None,
         contact=None,
+        business_id=user_in.business_id,
     )
     return _serialize_user_detail(user, base_url=str(request.base_url))
 
@@ -564,5 +423,6 @@ def create_superuser(
         company=None,
         country=None,
         contact=None,
+        business_id=user_in.business_id,
     )
     return _serialize_user_detail(user, base_url=str(request.base_url))

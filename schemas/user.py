@@ -10,6 +10,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     privacy_policy_accepted: bool = False
+    business_id: Optional[int] = Field(None, alias="businessId")
 
 class User(UserBase):
     id: int
@@ -17,6 +18,7 @@ class User(UserBase):
     is_superuser: bool
     privacy_policy_accepted: bool
     role: str = 'user'
+    business_id: Optional[int] = Field(None, alias="businessId")
 
     class Config:
         from_attributes = True
@@ -63,7 +65,7 @@ class TokenResponse(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role: Literal["user", "admin", "superuser"]
+    role: Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]
 
 
 class OtpVerifyResponse(BaseModel):
@@ -128,48 +130,15 @@ class AccountPasswordUpdate(BaseModel):
         allow_population_by_field_name = True
 
 
-class TwoFactorStatusResponse(BaseModel):
-    enabled: bool
-    method: Optional[Literal["authenticator", "sms"]] = None
-    sms_phone: Optional[str] = Field(None, alias="smsPhone")
-    sms_verified: bool = Field(False, alias="smsVerified")
-
-    class Config:
-        allow_population_by_field_name = True
-
-
-class TwoFactorMethodRequest(BaseModel):
-    method: Literal["authenticator", "sms"]
-
-
-class TwoFactorTotpSetupResponse(BaseModel):
-    secret: str
-    otpauth_url: str = Field(..., alias="otpauthUrl")
-
-    class Config:
-        allow_population_by_field_name = True
-
-
-class TwoFactorTotpVerifyRequest(BaseModel):
-    code: str
-
-
-class TwoFactorSmsStartRequest(BaseModel):
-    phone: str
-
-
-class TwoFactorSmsVerifyRequest(BaseModel):
-    code: str
-
-
 class UserManagementCreate(BaseModel):
     full_name: str = Field(..., alias="fullName")
     email: EmailStr
     password: str
-    role: Literal["user", "admin", "superuser"]
+    role: Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]
     plan: str
     billing: str
     status: str
+    business_id: Optional[int] = Field(None, alias="businessId")
 
     class Config:
         allow_population_by_field_name = True
@@ -177,13 +146,14 @@ class UserManagementCreate(BaseModel):
 
 class UserManagementUpdate(BaseModel):
     full_name: Optional[str] = Field(None, alias="fullName")
-    role: Optional[Literal["user", "admin", "superuser"]] = None
+    role: Optional[Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]] = None
     plan: Optional[str] = None
     billing: Optional[str] = None
     status: Optional[str] = None
     company: Optional[str] = None
     country: Optional[str] = None
     contact: Optional[str] = None
+    business_id: Optional[int] = Field(None, alias="businessId")
 
     class Config:
         allow_population_by_field_name = True

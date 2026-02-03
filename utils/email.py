@@ -13,12 +13,15 @@ def send_email(
     to_email: str,
     subject: str,
     content: str,
+    html_content: str | None = None,
 ):
     message = EmailMessage()
     message["From"] = from_email
     message["To"] = to_email
     message["Subject"] = subject
     message.set_content(content)
+    if html_content:
+        message.add_alternative(html_content, subtype="html")
 
     if smtp_use_tls:
         with smtplib.SMTP(smtp_host, smtp_port) as server:
