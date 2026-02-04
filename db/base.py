@@ -13,3 +13,6 @@ from models.sale import Sale
 from models.marketing_campaign import MarketingCampaign
 from models.marketing_email_log import MarketingEmailLog
 from models.promo_code import PromoCode
+from models.invoice import Invoice
+from models.subscription_event import SubscriptionEvent
+from models.audit_log import AuditLog

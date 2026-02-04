@@ -1,8 +1,10 @@
 # crud/business.py
-from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from typing import Optional, List
+from datetime import datetime
+from typing import List, Optional
 import uuid
+
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from models.business import Business
 from schemas.business import BusinessCreate
@@ -39,3 +41,27 @@ def create_business(db: Session, business_in: BusinessCreate) -> Business:
     db.commit()
     db.refresh(db_business)
     return db_business
+
+
+def suspend_business(db: Session, business_id: int, reason: Optional[str] = None) -> Optional[Business]:
+    business = get_business(db, business_id)
+    if not business:
+        return None
+    business.status = "suspended"
+    business.suspended_at = datetime.utcnow()
+    business.suspended_reason = reason
+    db.commit()
+    db.refresh(business)
+    return business
+
+
+def unsuspend_business(db: Session, business_id: int) -> Optional[Business]:
+    business = get_business(db, business_id)
+    if not business:
+        return None
+    business.status = "active"
+    business.suspended_at = None
+    business.suspended_reason = None
+    db.commit()
+    db.refresh(business)
+    return business

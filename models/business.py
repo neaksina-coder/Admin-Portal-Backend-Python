@@ -1,7 +1,9 @@
 # models/business.py
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy.orm import relationship
+
 from db.base_class import Base
 
 
@@ -13,6 +15,8 @@ class Business(Base):
     tenant_id = Column(String, unique=True, nullable=False, index=True)
     plan_id = Column(Integer, nullable=True, index=True)
     status = Column(String, default="active", nullable=False)
+    suspended_at = Column(DateTime, nullable=True)
+    suspended_reason = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False, onupdate=datetime.utcnow)
 

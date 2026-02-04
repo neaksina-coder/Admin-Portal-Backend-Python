@@ -9,7 +9,7 @@ class SubscriptionBase(BaseModel):
     plan_id: int = Field(..., alias="planId")
     start_date: date = Field(..., alias="startDate")
     end_date: Optional[date] = Field(None, alias="endDate")
-    status: str = "active"
+    status: str = "pending"
     billing_history: Optional[Any] = Field(None, alias="billingHistory")
 
     class Config:

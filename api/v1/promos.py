@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from api import deps
+from crud import audit_log as crud_audit_log
 from crud import promo_code as crud_promo
 from schemas.promo_code import (
     PromoCodeCreate,
@@ -20,9 +21,19 @@ router = APIRouter()
 def create_promo(
     promo_in: PromoCodeCreate,
     db: Session = Depends(deps.get_db),
-    _: dict = Depends(deps.require_roles(["admin"])),
+    current_user=Depends(deps.require_roles(["admin"])),
 ):
     promo = crud_promo.create_promo(db, promo_in)
+    crud_audit_log.create_audit_log(
+        db,
+        action="promo_created",
+        actor_user_id=current_user.id,
+        business_id=promo.business_id,
+        target_type="promo_code",
+        target_id=promo.id,
+        metadata_json={"code": promo.code, "discountType": promo.discount_type},
+    )
+    db.commit()
     return {
         "success": True,
         "status_code": 201,
@@ -88,11 +99,21 @@ def update_promo(
 def delete_promo(
     promo_id: int,
     db: Session = Depends(deps.get_db),
-    _: dict = Depends(deps.require_roles(["admin"])),
+    current_user=Depends(deps.require_roles(["admin"])),
 ):
     promo = crud_promo.delete_promo(db, promo_id)
     if not promo:
         raise HTTPException(status_code=404, detail="Promo code not found")
+    crud_audit_log.create_audit_log(
+        db,
+        action="promo_deleted",
+        actor_user_id=current_user.id,
+        business_id=promo.business_id,
+        target_type="promo_code",
+        target_id=promo.id,
+        metadata_json={"code": promo.code},
+    )
+    db.commit()
     return {"success": True, "message": "Promo code deleted successfully"}
 
 
