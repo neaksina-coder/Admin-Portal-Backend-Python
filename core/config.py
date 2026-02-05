@@ -50,5 +50,10 @@ class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_IDS: str = os.getenv("TELEGRAM_CHAT_IDS", "")
 
+    N8N_ADMIN_DIGEST_WEBHOOK_URL: str = os.getenv(
+        "N8N_ADMIN_DIGEST_WEBHOOK_URL",
+        "http://localhost:5678/webhook/admin-digest",
+    )
+
 
 settings = Settings()

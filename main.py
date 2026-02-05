@@ -8,9 +8,17 @@ from api.v1.api_router import api_router
 import time
 from sqlalchemy.exc import OperationalError
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from zoneinfo import ZoneInfo
+
+from utils.admin_digest import generate_and_store_daily_digest
 
 MAX_RETRIES = 5
 RETRY_DELAY = 5 # seconds
+SCHEDULER_TZ = "Asia/Phnom_Penh"
+
+_scheduler: BackgroundScheduler | None = None
 
 def create_tables():
     for i in range(MAX_RETRIES):
@@ -29,9 +37,32 @@ def create_tables():
 async def lifespan(app: FastAPI):
     # Startup: Create tables
     create_tables()
+    _start_scheduler()
     yield
     # Shutdown: Clean up resources if needed
-    pass
+    _stop_scheduler()
+
+
+def _start_scheduler() -> None:
+    global _scheduler
+    if _scheduler and _scheduler.running:
+        return
+    scheduler = BackgroundScheduler(timezone=ZoneInfo(SCHEDULER_TZ))
+    scheduler.add_job(
+        generate_and_store_daily_digest,
+        CronTrigger(hour=6, minute=0),
+        id="admin_digest_daily",
+        replace_existing=True,
+    )
+    scheduler.start()
+    _scheduler = scheduler
+
+
+def _stop_scheduler() -> None:
+    global _scheduler
+    if _scheduler:
+        _scheduler.shutdown(wait=False)
+        _scheduler = None
 
 def include_router(app):
     app.include_router(api_router, prefix="/api/v1")

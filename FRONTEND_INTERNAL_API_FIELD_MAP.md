@@ -481,6 +481,45 @@ This file focuses on field-level integration: DB columns and API JSON keys.
 
 ---
 
+## 15) Admin Digest (AI Summary)
+
+### DB Table: `admin_digests`
+- `id`
+- `range_type` (`daily`)
+- `summary_text`
+- `top_items` (JSONB)
+- `stats` (JSONB)
+- `generated_at`
+- `generated_by` (`system|user`)
+
+### API Response Shape (`GET /admin-digest/latest`)
+```json
+{
+  "range": "daily",
+  "summaryText": "Daily operations are stable with no overdue invoices or failed payments. One new business was registered today.",
+  "topItems": [
+    {
+      "type": "business",
+      "id": "newBusinesses",
+      "label": "New Businesses",
+      "reason": "One new business was registered today.",
+      "priority": "low"
+    }
+  ],
+  "stats": {
+    "newBusinesses": 1,
+    "overdueInvoices": 0,
+    "failedInvoices": 0,
+    "subscriptionsPending": 0,
+    "suspensions": 0,
+    "roleChanges": 0
+  },
+  "generatedAt": "2026-02-05T06:00:00"
+}
+```
+
+---
+
 ## Field Naming Convention for Frontend
 
 - DB uses snake_case.

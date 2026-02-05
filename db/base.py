@@ -16,3 +16,4 @@ from models.promo_code import PromoCode
 from models.invoice import Invoice
 from models.subscription_event import SubscriptionEvent
 from models.audit_log import AuditLog
+from models.admin_digest import AdminDigest

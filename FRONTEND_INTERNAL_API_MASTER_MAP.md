@@ -211,7 +211,20 @@ Sub-feature filters:
 
 ---
 
-## 15) Telegram Internal Alerts (Cross-Cutting)
+## 15) Admin Digest (AI Summary)
+
+Feature: Daily AI summary for internal admins.
+
+- `GET /admin-digest/latest` - Latest daily summary (stored snapshot)
+
+Notes:
+- Generated daily at 6:00 AM (Asia/Phnom_Penh).
+- Uses internal data: businesses, invoices, subscriptions, audit logs.
+- Frontend should display `summaryText` and the top 5 `topItems`.
+
+---
+
+## 16) Telegram Internal Alerts (Cross-Cutting)
 
 Feature: Internal real-time event alerts.
 
@@ -719,6 +732,45 @@ This file focuses on field-level integration: DB columns and API JSON keys.
     "newStatus": "paid"
   },
   "created_at": "2026-02-04T08:45:00"
+}
+```
+
+---
+
+## 15) Admin Digest (AI Summary)
+
+### DB Table: `admin_digests`
+- `id`
+- `range_type` (`daily`)
+- `summary_text`
+- `top_items` (JSONB)
+- `stats` (JSONB)
+- `generated_at`
+- `generated_by` (`system|user`)
+
+### API Response Shape (`GET /admin-digest/latest`)
+```json
+{
+  "range": "daily",
+  "summaryText": "Daily operations are stable with no overdue invoices or failed payments. One new business was registered today.",
+  "topItems": [
+    {
+      "type": "business",
+      "id": "newBusinesses",
+      "label": "New Businesses",
+      "reason": "One new business was registered today.",
+      "priority": "low"
+    }
+  ],
+  "stats": {
+    "newBusinesses": 1,
+    "overdueInvoices": 0,
+    "failedInvoices": 0,
+    "subscriptionsPending": 0,
+    "suspensions": 0,
+    "roleChanges": 0
+  },
+  "generatedAt": "2026-02-05T06:00:00"
 }
 ```
 
