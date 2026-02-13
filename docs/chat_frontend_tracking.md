@@ -83,6 +83,32 @@ const data = await res.json();
 const conversationId = data.data.id;
 ```
 
+## Update Visitor Profile (Frontend)
+```js
+const form = new FormData();
+form.append("name", "Sokha");
+form.append("email", "sokha@gmail.com");
+form.append("phone", "+85512345678");
+form.append("lastPage", window.location.pathname);
+
+await fetch(`/api/v1/chat/visitors/${visitorId}`, {
+  method: "PATCH",
+  body: form,
+});
+```
+
+## Update Visitor Avatar (Admin)
+```js
+const form = new FormData();
+form.append("avatar", fileInput.files[0]);
+
+await fetch(`/api/v1/chat/visitors/${visitorId}/avatar`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${adminToken}` },
+  body: form,
+});
+```
+
 ## Notes
 - The backend will also store `ip`, `country`, and `city` if you add GeoIP on the server.
 - For privacy, avoid collecting more than you need and disclose tracking to users.

@@ -1,8 +1,22 @@
 # api/v1/chat.py
 import json
+import os
+import shutil
+import uuid
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    UploadFile,
+    File,
+    Form,
+    Request,
+)
 from sqlalchemy.orm import Session
 
 from api import deps
@@ -44,6 +58,17 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _save_chat_avatar(upload: UploadFile) -> str:
+    upload_dir = os.path.join("uploads", "chat_avatars")
+    os.makedirs(upload_dir, exist_ok=True)
+    _, ext = os.path.splitext(upload.filename or "")
+    filename = f"{uuid.uuid4().hex}{ext.lower()}"
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(upload.file, buffer)
+    return f"/uploads/chat_avatars/{filename}"
+
+
 @router.post("/conversations", response_model=ChatConversationResponse, status_code=201)
 def create_conversation(
     payload: ChatConversationCreate,
@@ -58,6 +83,101 @@ def create_conversation(
         "status_code": 201,
         "message": "Conversation created successfully",
         "data": conversation,
+    }
+
+
+@router.patch("/visitors/{visitor_id}")
+def update_visitor_profile(
+    visitor_id: int,
+    name: str | None = Form(None),
+    email: str | None = Form(None),
+    phone: str | None = Form(None),
+    sourceUrl: str | None = Form(None),
+    referrer: str | None = Form(None),
+    utmSource: str | None = Form(None),
+    utmMedium: str | None = Form(None),
+    utmCampaign: str | None = Form(None),
+    timezone: str | None = Form(None),
+    language: str | None = Form(None),
+    browser: str | None = Form(None),
+    os: str | None = Form(None),
+    device: str | None = Form(None),
+    lastPage: str | None = Form(None),
+    db: Session = Depends(deps.get_db),
+):
+    visitor = crud_chat.get_visitor(db, visitor_id)
+    if not visitor:
+        raise HTTPException(status_code=404, detail="Visitor not found")
+    update_data = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "source_url": sourceUrl,
+        "referrer": referrer,
+        "utm_source": utmSource,
+        "utm_medium": utmMedium,
+        "utm_campaign": utmCampaign,
+        "timezone": timezone,
+        "language": language,
+        "browser": browser,
+        "os": os,
+        "device": device,
+        "last_page": lastPage,
+    }
+    for key, value in update_data.items():
+        if value is not None:
+            setattr(visitor, key, value)
+    db.add(visitor)
+    db.commit()
+    db.refresh(visitor)
+    return {"success": True, "message": "Visitor profile updated", "data": visitor}
+
+
+@router.post("/visitors/{visitor_id}/avatar")
+def update_visitor_avatar(
+    visitor_id: int,
+    request: Request,
+    avatar: UploadFile = File(...),
+    db: Session = Depends(deps.get_db),
+    _: dict = Depends(deps.require_roles(["admin"])),
+):
+    visitor = crud_chat.get_visitor(db, visitor_id)
+    if not visitor:
+        raise HTTPException(status_code=404, detail="Visitor not found")
+    avatar_path = _save_chat_avatar(avatar)
+    visitor.avatar_url = avatar_path
+    db.add(visitor)
+    db.commit()
+    db.refresh(visitor)
+    avatar_url = avatar_path
+    if avatar_url.startswith("/uploads/"):
+        avatar_url = f"{str(request.base_url).rstrip('/')}{avatar_url}"
+    return {
+        "success": True,
+        "message": "Visitor avatar updated",
+        "data": {"avatarUrl": avatar_url},
+    }
+
+
+@router.post("/admins/me/avatar")
+def update_admin_avatar(
+    request: Request,
+    avatar: UploadFile = File(...),
+    db: Session = Depends(deps.get_db),
+    current_user=Depends(deps.require_roles(["admin"])),
+):
+    avatar_path = _save_chat_avatar(avatar)
+    current_user.profile_image = avatar_path
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    avatar_url = avatar_path
+    if avatar_url.startswith("/uploads/"):
+        avatar_url = f"{str(request.base_url).rstrip('/')}{avatar_url}"
+    return {
+        "success": True,
+        "message": "Admin avatar updated",
+        "data": {"avatarUrl": avatar_url},
     }
 
 

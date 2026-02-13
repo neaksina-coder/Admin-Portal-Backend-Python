@@ -15,6 +15,7 @@ class ChatVisitor(Base):
     name = Column(String, nullable=True, index=True)
     email = Column(String, nullable=True, index=True)
     phone = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
     referrer = Column(String, nullable=True)
     utm_source = Column(String, nullable=True)

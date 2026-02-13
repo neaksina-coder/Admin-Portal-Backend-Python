@@ -127,6 +127,14 @@ ws.send(JSON.stringify({
 5. Receive realtime messages
 Same as visitor.
 
+## Profile Updates
+- Update visitor profile (public, for widget):
+  - `PATCH /chat/visitors/{visitorId}` (multipart form)
+- Update visitor avatar (admin only):
+  - `POST /chat/visitors/{visitorId}/avatar` (multipart form, field `avatar`)
+- Update admin avatar (admin only):
+  - `POST /chat/admins/me/avatar` (multipart form, field `avatar`)
+
 ## Message Payload (WS)
 Send:
 ```json

@@ -9,6 +9,7 @@ class ChatVisitorBase(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     source_url: Optional[str] = Field(None, alias="sourceUrl")
     referrer: Optional[str] = None
     utm_source: Optional[str] = Field(None, alias="utmSource")
