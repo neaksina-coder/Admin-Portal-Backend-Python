@@ -24,3 +24,5 @@ class Business(Base):
     subscriptions = relationship("Subscription", back_populates="business_ref")
     customers = relationship("Customer", back_populates="business_ref")
     ai_insights = relationship("AIInsight", back_populates="business_ref")
+    chat_visitors = relationship("ChatVisitor", back_populates="business_ref")
+    chat_conversations = relationship("ChatConversation", back_populates="business_ref")

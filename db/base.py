@@ -17,3 +17,6 @@ from models.invoice import Invoice
 from models.subscription_event import SubscriptionEvent
 from models.audit_log import AuditLog
 from models.admin_digest import AdminDigest
+from models.chat_visitor import ChatVisitor
+from models.chat_conversation import ChatConversation
+from models.chat_message import ChatMessage

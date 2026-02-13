@@ -75,6 +75,7 @@ class MarketingCampaignSendRequest(BaseModel):
     body: str
     html: Optional[str] = None
     segment: Optional[str] = None
+    target_segment: Optional[str] = Field(None, alias="targetSegment")
     dry_run: bool = Field(False, alias="dryRun")
 
     class Config:

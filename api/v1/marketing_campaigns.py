@@ -1,5 +1,6 @@
 # api/v1/marketing_campaigns.py
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from api import deps
@@ -208,7 +209,11 @@ def send_campaign_email(
     campaign = crud_campaign.get_campaign(db, campaign_id)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    segment = payload.segment or campaign.target_segment
+    segment = payload.target_segment or payload.segment or campaign.target_segment
+    if segment:
+        segment = segment.strip().lower()
+        if segment == "all":
+            segment = None
 
     if not (settings.EMAIL_FROM and settings.SMTP_USER and settings.SMTP_PASSWORD):
         raise HTTPException(status_code=500, detail="SMTP is not configured")
@@ -218,7 +223,7 @@ def send_campaign_email(
         Customer.email.isnot(None),
     )
     if segment:
-        query = query.filter(Customer.segment == segment)
+        query = query.filter(func.lower(Customer.segment) == segment)
     recipients = [row.email for row in query.all() if row.email]
 
     if payload.dry_run:
