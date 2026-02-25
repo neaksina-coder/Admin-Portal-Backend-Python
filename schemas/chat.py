@@ -102,8 +102,12 @@ class ChatConversation(ChatConversationBase):
 class ChatMessageBase(BaseModel):
     sender_type: Literal["visitor", "admin", "ai"] = Field(..., alias="senderType")
     sender_id: Optional[int] = Field(None, alias="senderId")
-    content: str
+    content: Optional[str] = None
     confidence: Optional[float] = None
+    attachment_url: Optional[str] = Field(None, alias="attachmentUrl")
+    attachment_type: Optional[str] = Field(None, alias="attachmentType")
+    attachment_name: Optional[str] = Field(None, alias="attachmentName")
+    attachment_size: Optional[int] = Field(None, alias="attachmentSize")
 
     class Config:
         allow_population_by_field_name = True

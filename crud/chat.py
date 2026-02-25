@@ -209,13 +209,18 @@ def create_message(
     conversation: ChatConversation,
     message_in: ChatMessageCreate,
 ) -> ChatMessage:
+    content = message_in.content or ""
     message = ChatMessage(
         conversation_id=conversation.id,
         business_id=conversation.business_id,
         sender_type=message_in.sender_type,
         sender_id=message_in.sender_id,
-        content=message_in.content,
+        content=content,
         confidence=message_in.confidence,
+        attachment_url=message_in.attachment_url,
+        attachment_type=message_in.attachment_type,
+        attachment_name=message_in.attachment_name,
+        attachment_size=message_in.attachment_size,
     )
     db.add(message)
 

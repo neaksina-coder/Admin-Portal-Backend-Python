@@ -84,6 +84,8 @@ def start_application():
         allow_headers=["*"],
     )
     os.makedirs("uploads/profile_images", exist_ok=True)
+    os.makedirs("uploads/chat_avatars", exist_ok=True)
+    os.makedirs("uploads/chat_images", exist_ok=True)
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
     include_router(app)
     return app

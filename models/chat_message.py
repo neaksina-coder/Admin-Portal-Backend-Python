@@ -17,6 +17,10 @@ class ChatMessage(Base):
     sender_id = Column(Integer, nullable=True, index=True)
     content = Column(Text, nullable=False)
     confidence = Column(Float, nullable=True)
+    attachment_url = Column(String, nullable=True)
+    attachment_type = Column(String, nullable=True)
+    attachment_name = Column(String, nullable=True)
+    attachment_size = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     conversation_ref = relationship("ChatConversation", back_populates="messages")

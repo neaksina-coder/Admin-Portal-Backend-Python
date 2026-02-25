@@ -69,6 +69,28 @@ def _save_chat_avatar(upload: UploadFile) -> str:
     return f"/uploads/chat_avatars/{filename}"
 
 
+def _save_chat_image(upload: UploadFile) -> str:
+    upload_dir = os.path.join("uploads", "chat_images")
+    os.makedirs(upload_dir, exist_ok=True)
+    _, ext = os.path.splitext(upload.filename or "")
+    ext = ext.lower()
+    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+    content_type = (upload.content_type or "").lower()
+    if not content_type.startswith("image/") and ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail="Only image uploads are allowed")
+    filename = f"{uuid.uuid4().hex}{ext or '.jpg'}"
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(upload.file, buffer)
+    return f"/uploads/chat_images/{filename}"
+
+
+def _absolute_upload_url(request: Request, path: str | None) -> str | None:
+    if path and path.startswith("/uploads/"):
+        return f"{str(request.base_url).rstrip('/')}{path}"
+    return path
+
+
 @router.post("/conversations", response_model=ChatConversationResponse, status_code=201)
 def create_conversation(
     payload: ChatConversationCreate,
@@ -181,6 +203,58 @@ def update_admin_avatar(
     }
 
 
+@router.post(
+    "/conversations/{conversation_id}/messages/image",
+    response_model=ChatMessageResponse,
+    status_code=201,
+)
+def create_image_message(
+    conversation_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    senderType: str = Form(...),
+    senderId: int | None = Form(None),
+    content: str | None = Form(None),
+    db: Session = Depends(deps.get_db),
+):
+    conversation = crud_chat.get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if senderType == "ai" and not conversation.ai_enabled:
+        raise HTTPException(status_code=400, detail="AI is paused for this conversation")
+
+    attachment_url = _save_chat_image(file)
+    attachment_type = file.content_type or "image"
+    attachment_name = file.filename or "image"
+    attachment_size = None
+    if attachment_url.startswith("/uploads/"):
+        storage_path = os.path.join("uploads", attachment_url.replace("/uploads/", "").lstrip("/"))
+        if os.path.exists(storage_path):
+            attachment_size = os.path.getsize(storage_path)
+
+    payload = ChatMessageCreate(
+        sender_type=senderType,
+        sender_id=senderId,
+        content=content,
+        attachment_url=attachment_url,
+        attachment_type=attachment_type,
+        attachment_name=attachment_name,
+        attachment_size=attachment_size,
+    )
+    message = crud_chat.create_message(db, conversation=conversation, message_in=payload)
+
+    if message.content is None:
+        message.content = ""
+    message.attachment_url = _absolute_upload_url(request, message.attachment_url)
+
+    return {
+        "success": True,
+        "status_code": 201,
+        "message": "Message created successfully",
+        "data": message,
+    }
+
+
 @router.get("/conversations", response_model=ChatConversationListResponse)
 def list_conversations(
     businessId: int = Query(...),
@@ -230,9 +304,14 @@ async def chat_ws(
         while True:
             payload = await websocket.receive_text()
             data = json.loads(payload)
-            if "senderType" not in data or "content" not in data:
+            if "senderType" not in data:
                 await websocket.send_text(
-                    json.dumps({"error": "senderType and content are required"})
+                    json.dumps({"error": "senderType is required"})
+                )
+                continue
+            if not data.get("content") and not data.get("attachmentUrl"):
+                await websocket.send_text(
+                    json.dumps({"error": "content or attachmentUrl is required"})
                 )
                 continue
 
@@ -241,6 +320,10 @@ async def chat_ws(
                 sender_id=data.get("senderId"),
                 content=data.get("content"),
                 confidence=data.get("confidence"),
+                attachment_url=data.get("attachmentUrl"),
+                attachment_type=data.get("attachmentType"),
+                attachment_name=data.get("attachmentName"),
+                attachment_size=data.get("attachmentSize"),
             )
             if message_in.sender_type == "ai" and not conversation.ai_enabled:
                 await websocket.send_text(json.dumps({"error": "AI is paused"}))
@@ -259,6 +342,10 @@ async def chat_ws(
                     "senderId": message.sender_id,
                     "content": message.content,
                     "confidence": message.confidence,
+                    "attachmentUrl": message.attachment_url,
+                    "attachmentType": message.attachment_type,
+                    "attachmentName": message.attachment_name,
+                    "attachmentSize": message.attachment_size,
                     "createdAt": message.created_at.isoformat(),
                 },
             }
@@ -336,6 +423,7 @@ def mark_conversation_read(
 @router.get("/conversations/{conversation_id}/messages", response_model=ChatMessageListResponse)
 def list_messages(
     conversation_id: int,
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(deps.get_db),
@@ -349,6 +437,11 @@ def list_messages(
         skip=skip,
         limit=limit,
     )
+    if request:
+        for message in messages:
+            if message.content is None:
+                message.content = ""
+            message.attachment_url = _absolute_upload_url(request, message.attachment_url)
     return {
         "success": True,
         "status_code": 200,
@@ -366,14 +459,20 @@ def list_messages(
 def create_message(
     conversation_id: int,
     payload: ChatMessageCreate,
+    request: Request,
     db: Session = Depends(deps.get_db),
 ):
     conversation = crud_chat.get_conversation(db, conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    if not payload.content and not payload.attachment_url:
+        raise HTTPException(status_code=400, detail="content or attachmentUrl is required")
     if payload.sender_type == "ai" and not conversation.ai_enabled:
         raise HTTPException(status_code=400, detail="AI is paused for this conversation")
     message = crud_chat.create_message(db, conversation=conversation, message_in=payload)
+    if message.content is None:
+        message.content = ""
+    message.attachment_url = _absolute_upload_url(request, message.attachment_url)
     return {
         "success": True,
         "status_code": 201,
