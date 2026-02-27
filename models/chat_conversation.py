@@ -18,6 +18,8 @@ class ChatConversation(Base):
     ai_enabled = Column(Boolean, default=True, nullable=False)
     ai_paused = Column(Boolean, default=False, nullable=False)
     ai_handoff_at = Column(DateTime, nullable=True)
+    last_admin_reply_at = Column(DateTime, nullable=True)
+    dify_conversation_id = Column(String, nullable=True)
     last_message_at = Column(DateTime, nullable=True)
     last_read_at = Column(DateTime, nullable=True)
     unread_count = Column(Integer, default=0, nullable=False)
