@@ -53,6 +53,8 @@ class ChatConversationBase(BaseModel):
     ai_enabled: bool = Field(..., alias="aiEnabled")
     ai_paused: bool = Field(..., alias="aiPaused")
     ai_handoff_at: Optional[datetime] = Field(None, alias="aiHandoffAt")
+    last_admin_reply_at: Optional[datetime] = Field(None, alias="lastAdminReplyAt")
+    dify_conversation_id: Optional[str] = Field(None, alias="difyConversationId")
     last_message_at: Optional[datetime] = Field(None, alias="lastMessageAt")
     last_read_at: Optional[datetime] = Field(None, alias="lastReadAt")
     unread_count: int = Field(..., alias="unreadCount")
@@ -81,6 +83,8 @@ class ChatConversationUpdate(BaseModel):
     assigned_admin_id: Optional[int] = Field(None, alias="assignedAdminId")
     ai_enabled: Optional[bool] = Field(None, alias="aiEnabled")
     ai_paused: Optional[bool] = Field(None, alias="aiPaused")
+    last_admin_reply_at: Optional[datetime] = Field(None, alias="lastAdminReplyAt")
+    dify_conversation_id: Optional[str] = Field(None, alias="difyConversationId")
 
     class Config:
         allow_population_by_field_name = True
@@ -170,6 +174,35 @@ class ChatMessageListResponse(BaseModel):
     message: str
     total: int
     data: list[ChatMessage]
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+
+class ChatModeData(BaseModel):
+    conversation_id: int = Field(..., alias="conversationId")
+    mode: Literal["AI", "ADMIN"]
+    admin_id: Optional[int] = Field(None, alias="adminId")
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+
+class ChatModeResponse(BaseModel):
+    success: bool
+    status_code: int = Field(..., alias="status_code")
+    message: str
+    data: ChatModeData
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+
+class ChatModeAction(BaseModel):
+    admin_id: Optional[int] = Field(None, alias="adminId")
 
     class Config:
         allow_population_by_field_name = True

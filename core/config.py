@@ -55,5 +55,14 @@ class Settings:
         "http://localhost:5678/webhook/admin-digest",
     )
 
+    DIFY_BASE_URL: str = os.getenv("DIFY_BASE_URL", "https://api.dify.ai/v1")
+    DIFY_API_KEY: str = os.getenv("DIFY_API_KEY", "app-6ZdtpXCz3qB3TOUiYA7Rsg2z")
+    DIFY_RESPONSE_MODE: str = os.getenv("DIFY_RESPONSE_MODE", "blocking")
+    DIFY_FALLBACK_MESSAGE: str = os.getenv(
+        "DIFY_FALLBACK_MESSAGE",
+        "I'm sorry, I don't have that information. Please contact our support team.",
+    )
+    ADMIN_INACTIVITY_MINUTES: int = int(os.getenv("ADMIN_INACTIVITY_MINUTES", 5))
+
 
 settings = Settings()

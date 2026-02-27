@@ -203,6 +203,18 @@ def list_messages(
     )
 
 
+def get_last_visitor_message(db: Session, *, conversation_id: int) -> Optional[ChatMessage]:
+    return (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.conversation_id == conversation_id,
+            ChatMessage.sender_type == "visitor",
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .first()
+    )
+
+
 def create_message(
     db: Session,
     *,
@@ -227,10 +239,13 @@ def create_message(
     now = datetime.utcnow()
     conversation.last_message_at = now
     if message_in.sender_type == "admin":
+        if conversation.assigned_admin_id is None and message_in.sender_id:
+            conversation.assigned_admin_id = message_in.sender_id
         if conversation.ai_enabled:
             conversation.ai_handoff_at = conversation.ai_handoff_at or now
         conversation.ai_enabled = False
         conversation.ai_paused = True
+        conversation.last_admin_reply_at = now
         conversation.status = conversation.status or "Open"
     elif message_in.sender_type == "visitor":
         conversation.status = "Open"
