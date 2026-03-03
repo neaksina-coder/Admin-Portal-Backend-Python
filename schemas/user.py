@@ -1,5 +1,5 @@
 # schemas/user.py
-from pydantic import BaseModel, EmailStr, Field, constr, field_validator
+from pydantic import BaseModel, EmailStr, Field, constr, field_validator, ConfigDict
 from typing import Optional, Literal, List
 import re
 
@@ -11,6 +11,7 @@ class UserCreate(UserBase):
     password: str
     privacy_policy_accepted: bool = False
     business_id: Optional[int] = Field(None, alias="businessId")
+    model_config = ConfigDict(populate_by_name=True)
 
 class User(UserBase):
     id: int
@@ -20,8 +21,7 @@ class User(UserBase):
     role: str = 'user'
     business_id: Optional[int] = Field(None, alias="businessId")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 class Token(BaseModel):
     token: str
@@ -65,7 +65,17 @@ class TokenResponse(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role: Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]
+    role: Literal[
+        "user",
+        "admin",
+        "superuser",
+        "customer_owner",
+        "customer_staff",
+        "support",
+        "employee",
+        "hr_admin",
+        "hr_manager",
+    ]
 
 
 class OtpVerifyResponse(BaseModel):
@@ -81,8 +91,7 @@ class UserProfile(BaseModel):
     contact: Optional[str] = None
     profile_image: Optional[str] = Field(None, alias="profileImage")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AccountSettingsUpdate(BaseModel):
@@ -93,8 +102,7 @@ class AccountSettingsUpdate(BaseModel):
     contact: Optional[str] = None
     profile_image: Optional[str] = Field(None, alias="profileImage")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AccountSettingsResponse(BaseModel):
@@ -105,9 +113,7 @@ class AccountSettingsResponse(BaseModel):
     is_superuser: bool = Field(..., alias="isSuperuser")
     profile: UserProfile
 
-    class Config:
-        from_attributes = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
 class AccountPasswordUpdate(BaseModel):
@@ -134,19 +140,40 @@ class UserManagementCreate(BaseModel):
     full_name: str = Field(..., alias="fullName")
     email: EmailStr
     password: str
-    role: Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]
+    role: Literal[
+        "user",
+        "admin",
+        "superuser",
+        "customer_owner",
+        "customer_staff",
+        "support",
+        "employee",
+        "hr_admin",
+        "hr_manager",
+    ]
     plan: str
     billing: str
     status: str
     business_id: Optional[int] = Field(None, alias="businessId")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UserManagementUpdate(BaseModel):
     full_name: Optional[str] = Field(None, alias="fullName")
-    role: Optional[Literal["user", "admin", "superuser", "customer_owner", "customer_staff", "support"]] = None
+    role: Optional[
+        Literal[
+            "user",
+            "admin",
+            "superuser",
+            "customer_owner",
+            "customer_staff",
+            "support",
+            "employee",
+            "hr_admin",
+            "hr_manager",
+        ]
+    ] = None
     plan: Optional[str] = None
     billing: Optional[str] = None
     status: Optional[str] = None
@@ -155,8 +182,7 @@ class UserManagementUpdate(BaseModel):
     contact: Optional[str] = None
     business_id: Optional[int] = Field(None, alias="businessId")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UserListItem(BaseModel):
@@ -168,9 +194,7 @@ class UserListItem(BaseModel):
     billing: Optional[str] = None
     status: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
 class UserDetail(UserListItem):

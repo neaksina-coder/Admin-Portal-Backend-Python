@@ -22,3 +22,8 @@ from models.chat_conversation import ChatConversation
 from models.chat_message import ChatMessage
 from models.notification import Notification
 from models.contact_inquiry import ContactInquiry
+from models.leave_request import LeaveRequest
+from models.attendance_log import AttendanceLog
+from models.pay_period import PayPeriod
+from models.employee_pay_setting import EmployeePaySetting
+from models.payslip import Payslip

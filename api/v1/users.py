@@ -57,6 +57,7 @@ def _serialize_user_list_item(user):
         "plan": user.plan,
         "billing": user.billing,
         "status": user.status,
+        "businessId": user.business_id,
     }
 
 
@@ -84,6 +85,7 @@ def _serialize_account_settings(user, base_url: Optional[str] = None):
         "email": user.email,
         "role": "superuser" if user.is_superuser else user.role,
         "isSuperuser": user.is_superuser,
+        "businessId": user.business_id,
         "profile": {
             "company": user.company,
             "country": user.country,

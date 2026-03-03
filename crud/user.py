@@ -15,9 +15,12 @@ ROLE_SORT_ORDER = {
     "user": 1,
     "customer_staff": 2,
     "customer_owner": 3,
-    "support": 4,
-    "admin": 5,
-    "superuser": 6,
+    "employee": 4,
+    "hr_manager": 5,
+    "hr_admin": 6,
+    "support": 7,
+    "admin": 8,
+    "superuser": 9,
 }
 PLAN_SORT_ORDER = {"basic": 1, "company": 2, "enterprise": 3, "team": 4}
 STATUS_SORT_ORDER = {"active": 1, "inactive": 2, "pending": 3}
@@ -247,12 +250,15 @@ def create_user_with_details(
     full_name: str,
     role: str,
     is_superuser: bool = False,
+    is_active: bool = True,
     plan: Optional[str] = None,
     billing: Optional[str] = None,
     status: Optional[str] = None,
     company: Optional[str] = None,
     country: Optional[str] = None,
     contact: Optional[str] = None,
+    employee_id: Optional[str] = None,
+    department: Optional[str] = None,
     business_id: Optional[int] = None,
 ) -> User:
     hashed_password = get_password_hash(password)
@@ -264,6 +270,7 @@ def create_user_with_details(
         hashed_password=hashed_password,
         role=role,
         is_superuser=is_superuser,
+        is_active=is_active,
         privacy_policy_accepted=False,
         plan=plan,
         billing=billing,
@@ -271,6 +278,8 @@ def create_user_with_details(
         company=company,
         country=country,
         contact=contact,
+        employee_id=employee_id,
+        department=department,
         business_id=business_id,
     )
     try:

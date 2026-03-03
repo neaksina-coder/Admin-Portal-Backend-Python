@@ -28,6 +28,8 @@ class User(Base):
     company = Column(String, nullable=True)
     country = Column(String, nullable=True)
     contact = Column(String, nullable=True)
+    employee_id = Column(String, nullable=True, index=True)
+    department = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

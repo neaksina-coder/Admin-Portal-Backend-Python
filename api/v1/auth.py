@@ -65,6 +65,11 @@ def login(
             status_code=401,
             detail="Incorrect email or password",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Account pending approval",
+        )
     effective_role = "superuser" if user.is_superuser else user.role
     access_token = create_access_token(data={"sub": user.email, "role": effective_role})
     user.role = effective_role

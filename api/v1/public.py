@@ -1,12 +1,18 @@
 # api/v1/public.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from api import deps
 from core.config import settings
+from crud import user as crud_user
 from crud import contact_inquiry as crud_inquiry
 from models.business import Business
 from schemas.contact_inquiry import ContactInquiryPublicCreate, ContactInquiryResponse
+from schemas.employee_registration import (
+    EmployeeRegisterRequest,
+    EmployeeRegisterResponse,
+)
 from utils.email import send_email
 
 
@@ -66,4 +72,50 @@ def submit_contact_inquiry(
         "status_code": 201,
         "message": "Contact inquiry submitted successfully",
         "data": inquiry,
+    }
+
+
+@router.post("/hr/register", response_model=EmployeeRegisterResponse, status_code=status.HTTP_201_CREATED)
+def register_hr_employee(
+    payload: EmployeeRegisterRequest,
+    db: Session = Depends(deps.get_db),
+):
+    company_code = payload.company_code.strip()
+    if not company_code:
+        raise HTTPException(status_code=400, detail="Company code is required")
+
+    business = (
+        db.query(Business)
+        .filter(func.lower(Business.tenant_id) == company_code.lower())
+        .first()
+    )
+    if not business:
+        raise HTTPException(status_code=404, detail="Invalid company code")
+
+    existing = crud_user.get_user_by_email(db, email=payload.email)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="The user with this email already exists in the system.",
+        )
+
+    crud_user.create_user_with_details(
+        db,
+        email=payload.email,
+        password=payload.password,
+        full_name=payload.name,
+        role="employee",
+        is_superuser=False,
+        is_active=False,
+        status="pending",
+        contact=payload.phone,
+        employee_id=payload.employee_id,
+        department=payload.department,
+        business_id=business.id,
+    )
+
+    return {
+        "success": True,
+        "status_code": status.HTTP_201_CREATED,
+        "message": "Registration submitted. Awaiting HR admin approval.",
     }
