@@ -117,6 +117,7 @@ Sub-feature endpoints (contact history):
 Feature: CRM dashboard summary.
 
 - `GET /dashboard/crm` - CRM summary KPIs by business
+- `GET /dashboard/users-overview` - User stats cards (total/paid/active/pending)
 
 ---
 
@@ -214,6 +215,25 @@ Config used by backend:
 - `TELEGRAM_ALERTS_ENABLED`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_IDS`
+
+---
+
+## 16) Contact Inquiries (Public → Admin Inbox)
+
+Feature: Public website contact form routed to admin inbox (not a campaign).
+
+Public endpoint:
+- `POST /public/contact-inquiries` - Submit contact inquiry (no auth)
+
+Admin endpoints:
+- `GET /contact-inquiries/` - List inquiries (filters: `businessId`, `status`, `q`, `skip`, `limit`)
+- `GET /contact-inquiries/{inquiry_id}` - Inquiry detail
+- `PUT /contact-inquiries/{inquiry_id}` - Update status/assignee
+- `POST /contact-inquiries/{inquiry_id}/reply` - Reply to customer (email)
+
+Notes:
+- Requires SMTP config to send replies.
+- Optional internal email alert uses `ADMIN_INBOX_EMAILS`.
 
 ---
 

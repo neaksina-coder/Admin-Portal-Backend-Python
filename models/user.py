@@ -1,5 +1,6 @@
 # models/user.py
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from datetime import datetime
 from sqlalchemy.orm import relationship
 from db.base_class import Base  # ← Change this from db.base to db.base_class
 
@@ -29,8 +30,11 @@ class User(Base):
     contact = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     role_ref = relationship("UserRole", back_populates="users")
     plan_ref = relationship("UserPlan", back_populates="users")
     status_ref = relationship("UserStatus", back_populates="users")
     billing_ref = relationship("UserBilling", back_populates="users")
     business_ref = relationship("Business", back_populates="users")
+  

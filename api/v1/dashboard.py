@@ -1,12 +1,13 @@
 # api/v1/dashboard.py
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from datetime import datetime, timedelta
 
 from api import deps
 from models.customer import Customer
 from models.sale import Sale
+from models.user import User
 
 router = APIRouter()
 
@@ -25,6 +26,29 @@ def _interval_key(interval: str) -> str:
     if interval in {"day", "week", "month"}:
         return interval
     return "day"
+
+
+def _growth_pct(current: int, previous: int) -> float:
+    if not previous:
+        return 0.0
+    return float(round(((current - previous) / previous) * 100, 2))
+
+
+def _count_users(
+    db: Session,
+    *,
+    business_id: int | None = None,
+    filter_expr=None,
+    created_before: datetime | None = None,
+) -> int:
+    query = db.query(func.count(User.id))
+    if business_id:
+        query = query.filter(User.business_id == business_id)
+    if filter_expr is not None:
+        query = query.filter(filter_expr)
+    if created_before is not None:
+        query = query.filter(User.created_at < created_before)
+    return int(query.scalar() or 0)
 
 
 @router.get("/crm")
@@ -335,4 +359,57 @@ def churn_risk_summary(
         "status_code": 200,
         "message": "Churn risk summary",
         "data": data,
+    }
+
+
+@router.get("/users-overview")
+def users_overview(
+    businessId: int | None = Query(None),
+    range: str = Query("7d"),
+    db: Session = Depends(deps.get_db),
+    _: dict = Depends(deps.require_roles(["admin"])),
+):
+    days = _range_to_days(range)
+    now = datetime.utcnow()
+    start = now - timedelta(days=days)
+
+    paid_filter = or_(
+        User.plan_id.isnot(None),
+        User.plan.isnot(None),
+        User.billing.isnot(None),
+    )
+    active_filter = or_(User.status == "active", User.is_active.is_(True))
+    pending_filter = User.status == "pending"
+
+    total_users = _count_users(db, business_id=businessId)
+    paid_users = _count_users(db, business_id=businessId, filter_expr=paid_filter)
+    active_users = _count_users(db, business_id=businessId, filter_expr=active_filter)
+    pending_users = _count_users(db, business_id=businessId, filter_expr=pending_filter)
+
+    total_users_prev = _count_users(db, business_id=businessId, created_before=start)
+    paid_users_prev = _count_users(
+        db, business_id=businessId, filter_expr=paid_filter, created_before=start
+    )
+    active_users_prev = _count_users(
+        db, business_id=businessId, filter_expr=active_filter, created_before=start
+    )
+    pending_users_prev = _count_users(
+        db, business_id=businessId, filter_expr=pending_filter, created_before=start
+    )
+
+    return {
+        "success": True,
+        "status_code": 200,
+        "message": "Users overview",
+        "data": {
+            "totalUsers": total_users,
+            "totalUsersGrowthPct": _growth_pct(total_users, total_users_prev),
+            "paidUsers": paid_users,
+            "paidUsersGrowthPct": _growth_pct(paid_users, paid_users_prev),
+            "activeUsers": active_users,
+            "activeUsersGrowthPct": _growth_pct(active_users, active_users_prev),
+            "pendingUsers": pending_users,
+            "pendingUsersGrowthPct": _growth_pct(pending_users, pending_users_prev),
+            "rangeDays": days,
+        },
     }

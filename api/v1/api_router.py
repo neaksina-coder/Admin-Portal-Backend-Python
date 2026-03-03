@@ -1,6 +1,6 @@
 # api/v1/api_router.py
 from fastapi import APIRouter
-from api.v1 import auth, users, businesses, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications
+from api.v1 import auth, users, businesses, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications, contact_inquiries_api, public
 
 
 api_router = APIRouter()
@@ -21,3 +21,5 @@ api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["audit-
 api_router.include_router(admin_digests.router, prefix="/admin-digest", tags=["admin-digest"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(contact_inquiries_api.router, prefix="/contact-inquiries", tags=["contact-inquiries"])
+api_router.include_router(public.router, prefix="/public", tags=["public"])
