@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:17
+    container_name: fullstack_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345}
+      POSTGRES_DB: ${POSTGRES_DB:-e-commerce}
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./Backend-Python
+    container_name: fullstack_backend
+    env_file:
+      - ./Backend-Python/.env
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./Frontend-Vue.js
+      dockerfile: dev.Dockerfile
+    container_name: fullstack_frontend
+    environment:
+      VITE_API_BASE: http://localhost:8000/api/v1
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      VITE_CHAT_WS_URL: ws://localhost:8000/api/v1/chat/ws
+      VITE_NOTIFICATIONS_WS_URL: ws://localhost:8000/api/v1/notifications/ws
+      VITE_AI_MOCK: "false"
+    volumes:
+      - ./Frontend-Vue.js/src:/app/src
+      - ./Frontend-Vue.js/public:/app/public
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
