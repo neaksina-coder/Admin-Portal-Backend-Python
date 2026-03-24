@@ -1,7 +1,7 @@
 # models/leave_request.py
 from datetime import datetime, date
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text, Float
 from sqlalchemy.orm import relationship
 
 from db.base_class import Base
@@ -13,9 +13,11 @@ class LeaveRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    leave_type_id = Column(Integer, ForeignKey("leave_types.id"), nullable=True, index=True)
     leave_type = Column(String, nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    days_requested = Column(Float, nullable=True)
     reason = Column(Text, nullable=True)
     decision_note = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="pending", index=True)
@@ -27,3 +29,4 @@ class LeaveRequest(Base):
     business_ref = relationship("Business")
     user_ref = relationship("User", foreign_keys=[user_id])
     approved_by_user_ref = relationship("User", foreign_keys=[approved_by_user_id])
+    leave_type_ref = relationship("LeaveType")

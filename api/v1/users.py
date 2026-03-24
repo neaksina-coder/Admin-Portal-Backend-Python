@@ -201,7 +201,7 @@ def get_user_filters(
 @router.get("/me", response_model=AccountSettingsResponse)
 def get_account_settings(
     request: Request,
-    current_user: User = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(deps.get_current_user),
 ):
     return _serialize_account_settings(current_user, base_url=str(request.base_url))
 
@@ -210,7 +210,7 @@ def get_account_settings(
 def update_account_settings(
     request: Request,
     db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(deps.get_current_user),
     fullName: Optional[str] = Form(None),
     email: Optional[EmailStr] = Form(None),
     company: Optional[str] = Form(None),
@@ -244,7 +244,7 @@ def update_account_settings(
 def update_account_password(
     password_in: AccountPasswordUpdate,
     db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(deps.get_current_user),
 ):
     if not verify_password(password_in.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from models.business import Business
-from schemas.business import BusinessCreate
+from schemas.business import BusinessCreate, BusinessAccountUpdate
 
 
 def get_business(db: Session, business_id: int) -> Optional[Business]:
@@ -62,6 +62,31 @@ def unsuspend_business(db: Session, business_id: int) -> Optional[Business]:
     business.status = "active"
     business.suspended_at = None
     business.suspended_reason = None
+    db.commit()
+    db.refresh(business)
+    return business
+
+
+def update_business_account(
+    db: Session, business: Business, payload: BusinessAccountUpdate
+) -> Business:
+    updates = payload.dict(exclude_unset=True, by_alias=False)
+
+    if "tenant_id" in updates:
+        tenant_id = (updates["tenant_id"] or "").strip()
+        if not tenant_id:
+            raise HTTPException(status_code=400, detail="Tenant ID is required")
+        existing = get_business_by_tenant_id(db, tenant_id)
+        if existing and existing.id != business.id:
+            raise HTTPException(status_code=400, detail="Tenant ID already exists")
+        business.tenant_id = tenant_id
+
+    if "name" in updates:
+        name = (updates["name"] or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Business name is required")
+        business.name = name
+
     db.commit()
     db.refresh(business)
     return business

@@ -32,6 +32,15 @@ class BusinessSuspendRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class BusinessAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    tenant_id: Optional[str] = Field(None, alias="tenantId")
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+
 class Business(BusinessBase):
     id: int
     timestamps: BusinessTimestamps

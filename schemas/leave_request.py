@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field, ConfigDict
 class LeaveRequestBase(BaseModel):
     business_id: int = Field(..., alias="businessId")
     user_id: int = Field(..., alias="userId")
+    leave_type_id: int | None = Field(None, alias="leaveTypeId")
     leave_type: str = Field(..., alias="leaveType")
     start_date: date = Field(..., alias="startDate")
     end_date: date = Field(..., alias="endDate")
+    days_requested: float | None = Field(None, alias="daysRequested")
     reason: Optional[str] = None
     model_config = ConfigDict(populate_by_name=True)
 
@@ -18,7 +20,8 @@ class LeaveRequestBase(BaseModel):
 class LeaveRequestCreate(BaseModel):
     business_id: Optional[int] = Field(None, alias="businessId")
     user_id: Optional[int] = Field(None, alias="userId")
-    leave_type: str = Field(..., alias="leaveType")
+    leave_type_id: int | None = Field(None, alias="leaveTypeId")
+    leave_type: Optional[str] = Field(None, alias="leaveType")
     start_date: date = Field(..., alias="startDate")
     end_date: date = Field(..., alias="endDate")
     reason: Optional[str] = None
@@ -26,6 +29,7 @@ class LeaveRequestCreate(BaseModel):
 
 
 class LeaveRequestUpdate(BaseModel):
+    leave_type_id: int | None = Field(None, alias="leaveTypeId")
     leave_type: Optional[str] = Field(None, alias="leaveType")
     start_date: Optional[date] = Field(None, alias="startDate")
     end_date: Optional[date] = Field(None, alias="endDate")

@@ -9,6 +9,7 @@ from typing import Sequence
 from core.config import settings
 from db.session import SessionLocal
 from models.user import User
+from models.business import Business
 from schemas.user import TokenData
 from crud import user as crud_user
 
@@ -38,6 +39,13 @@ def get_current_user(
     user = crud_user.get_user_by_email(db, email=token_data.email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.business_id:
+        business = db.query(Business).filter(Business.id == user.business_id).first()
+        if business and (business.status or "").lower() == "suspended":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Business account is suspended",
+            )
     return user
 
 

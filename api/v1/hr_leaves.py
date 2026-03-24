@@ -109,12 +109,18 @@ def create_leave_request(
     else:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
-    leave_request = crud_leave.create_leave_request(
-        db,
-        payload,
-        business_id=business_id,
-        user_id=user_id,
-    )
+    if not payload.leave_type_id and not payload.leave_type:
+        raise HTTPException(status_code=400, detail="leaveTypeId or leaveType is required")
+
+    try:
+        leave_request = crud_leave.create_leave_request(
+            db,
+            payload,
+            business_id=business_id,
+            user_id=user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return {
         "success": True,
         "status_code": status.HTTP_201_CREATED,

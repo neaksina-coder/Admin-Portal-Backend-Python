@@ -1,12 +1,13 @@
 # api/v1/api_router.py
 from fastapi import APIRouter
-from api.v1 import auth, users, businesses, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications, contact_inquiries_api, public, hr_employees, hr_leaves, hr_attendance, hr_payroll, hr_dashboard
+from api.v1 import auth, users, businesses, business_account, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications, contact_inquiries_api, public, hr_employees, hr_leaves, hr_attendance, hr_payroll, hr_dashboard, hr_leave_policies, hr_analytics
 
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(businesses.router, prefix="/businesses", tags=["businesses"])
+api_router.include_router(business_account.router, prefix="/business-account", tags=["business-account"])
 api_router.include_router(plans.router, prefix="/plans", tags=["plans"])
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 api_router.include_router(customers.router, prefix="/customers", tags=["customers"])
@@ -25,6 +26,8 @@ api_router.include_router(contact_inquiries_api.router, prefix="/contact-inquiri
 api_router.include_router(public.router, prefix="/public", tags=["public"])
 api_router.include_router(hr_employees.router, prefix="/hr/employees", tags=["hr-employees"])
 api_router.include_router(hr_leaves.router, prefix="/hr/leaves", tags=["hr-leaves"])
+api_router.include_router(hr_leave_policies.router, prefix="/hr", tags=["hr-leave-policies"])
 api_router.include_router(hr_attendance.router, prefix="/hr/attendance", tags=["hr-attendance"])
 api_router.include_router(hr_payroll.router, prefix="/hr/payroll", tags=["hr-payroll"])
 api_router.include_router(hr_dashboard.router, prefix="/hr/dashboard", tags=["hr-dashboard"])
+api_router.include_router(hr_analytics.router, prefix="/hr/analytics", tags=["hr-analytics"])

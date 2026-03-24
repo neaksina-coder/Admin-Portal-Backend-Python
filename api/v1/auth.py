@@ -8,6 +8,7 @@ import logging
 from api import deps
 from crud import user as crud_user
 from crud import otp_code as crud_otp
+from models.business import Business
 from schemas.user import (
     TokenResponse,
     UserLogin,
@@ -70,6 +71,13 @@ def login(
             status_code=403,
             detail="Account pending approval",
         )
+    if user.business_id:
+        business = db.query(Business).filter(Business.id == user.business_id).first()
+        if business and (business.status or "").lower() == "suspended":
+            raise HTTPException(
+                status_code=403,
+                detail="Business account is suspended",
+            )
     effective_role = "superuser" if user.is_superuser else user.role
     access_token = create_access_token(data={"sub": user.email, "role": effective_role})
     user.role = effective_role
