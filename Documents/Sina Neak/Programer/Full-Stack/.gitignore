@@ -1,0 +1,22 @@
+# Local environment
+.env
+.env.*
+
+# Node
+**/node_modules/
+
+# Python
+**/__pycache__/
+**/*.pyc
+
+# Logs
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+**/dist/
+**/.vite/
