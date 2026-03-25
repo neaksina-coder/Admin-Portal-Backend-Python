@@ -10,6 +10,7 @@ from models.customer import Customer
 from models.customer_contact import CustomerContact
 from models.ai_insight import AIInsight
 from models.sale import Sale
+from models.sale_item import SaleItem
 from models.marketing_campaign import MarketingCampaign
 from models.marketing_email_log import MarketingEmailLog
 from models.promo_code import PromoCode

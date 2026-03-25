@@ -23,3 +23,4 @@ class Sale(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     business_ref = relationship("Business", backref="sales")
+    items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")

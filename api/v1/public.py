@@ -1,19 +1,34 @@
 # api/v1/public.py
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from api import deps
 from core.config import settings
+from crud import business as crud_business
+from crud import plan as crud_plan
+from crud import subscription as crud_subscription
 from crud import user as crud_user
 from crud import contact_inquiry as crud_inquiry
 from models.business import Business
+from models.invoice import Invoice
+from models.subscription import Subscription
 from schemas.contact_inquiry import ContactInquiryPublicCreate, ContactInquiryResponse
+from schemas.business import BusinessCreate
+from schemas.subscription import SubscriptionCreate
 from schemas.employee_registration import (
     EmployeeRegisterRequest,
     EmployeeRegisterResponse,
 )
+from schemas.payment import (
+    PayPalOrderCreate,
+    PayPalOrderResponse,
+    PayPalCaptureRequest,
+    PayPalCaptureResponse,
+)
 from utils.email import send_email
+from utils.paypal import create_order, capture_order
 
 
 router = APIRouter()
@@ -118,4 +133,149 @@ def register_hr_employee(
         "success": True,
         "status_code": status.HTTP_201_CREATED,
         "message": "Registration submitted. Awaiting HR admin approval.",
+    }
+
+
+@router.get("/paypal/config")
+def paypal_config():
+    if not settings.PAYPAL_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="PayPal is not configured")
+    return {
+        "clientId": settings.PAYPAL_CLIENT_ID,
+        "env": settings.PAYPAL_ENV,
+        "currency": settings.PAYPAL_CURRENCY,
+    }
+
+
+@router.get("/plans")
+def list_public_plans(
+    db: Session = Depends(deps.get_db),
+):
+    plans = crud_plan.list_plans(db, skip=0, limit=100)
+    allowed = ["basic", "pro", "enterprise"]
+    filtered = [plan for plan in plans if (plan.plan_name or "").lower() in allowed]
+    order_map = {name: idx for idx, name in enumerate(allowed)}
+    filtered.sort(key=lambda p: order_map.get((p.plan_name or "").lower(), 99))
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": plan.id,
+                "name": plan.plan_name,
+                "price": float(plan.price or 0),
+                "features": plan.features,
+            }
+            for plan in filtered
+        ],
+    }
+
+
+@router.post("/paypal/orders", response_model=PayPalOrderResponse)
+def create_paypal_order(
+    payload: PayPalOrderCreate,
+    db: Session = Depends(deps.get_db),
+):
+    plan = crud_plan.get_plan_by_name(db, payload.plan_name)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    price = float(plan.price or 0)
+    if payload.billing_cycle == "yearly":
+        price = price * 12
+
+    # Create business + owner before payment (pending subscription)
+    business = crud_business.create_business(
+        db,
+        BusinessCreate(name=payload.business_name, plan_id=plan.id, status="active"),
+    )
+
+    owner = crud_user.create_user_with_details(
+        db,
+        email=payload.email,
+        password=payload.password,
+        full_name=payload.business_name,
+        role="customer_owner",
+        is_superuser=False,
+        is_active=True,
+        status="active",
+        business_id=business.id,
+    )
+
+    start_date = date.today()
+    end_date = start_date + timedelta(days=365 if payload.billing_cycle == "yearly" else 30)
+
+    sub = crud_subscription.create_subscription(
+        db,
+        SubscriptionCreate(
+            businessId=business.id,
+            planId=plan.id,
+            startDate=start_date,
+            endDate=end_date,
+            status="pending",
+            billingHistory={
+                "source": "paypal",
+                "planName": plan.plan_name,
+                "billingCycle": payload.billing_cycle,
+                "ownerUserId": owner.id,
+            },
+        ),
+    )
+
+    order = create_order(
+        amount=price,
+        currency=settings.PAYPAL_CURRENCY,
+        description=f"{plan.plan_name} ({payload.billing_cycle})",
+        custom_id=str(sub.id),
+    )
+
+    return {"orderId": order["id"]}
+
+
+@router.post("/paypal/capture", response_model=PayPalCaptureResponse)
+def capture_paypal_order(
+    payload: PayPalCaptureRequest,
+    db: Session = Depends(deps.get_db),
+):
+    result = capture_order(payload.order_id)
+    status_value = (result.get("status") or "").upper()
+    if status_value != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Payment not completed")
+
+    purchase_units = result.get("purchase_units", [])
+    custom_id = None
+    if purchase_units:
+        custom_id = purchase_units[0].get("custom_id")
+
+    if not custom_id:
+        raise HTTPException(status_code=400, detail="Missing subscription reference")
+
+    sub = db.query(Subscription).filter(Subscription.id == int(custom_id)).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    sub.status = "active"
+    if isinstance(sub.billing_history, dict):
+        sub.billing_history["paypalOrderId"] = payload.order_id
+
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.subscription_id == sub.id)
+        .order_by(Invoice.created_at.desc())
+        .first()
+    )
+    if invoice:
+        invoice.payment_status = "paid"
+        if isinstance(invoice.metadata_json, dict):
+            invoice.metadata_json["paypalOrderId"] = payload.order_id
+
+    db.add(sub)
+    if invoice:
+        db.add(invoice)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Payment captured",
+        "businessId": sub.business_id,
+        "subscriptionId": sub.id,
     }

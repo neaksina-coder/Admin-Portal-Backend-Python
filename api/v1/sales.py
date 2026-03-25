@@ -6,16 +6,27 @@ from datetime import datetime
 from api import deps
 from crud import sale as crud_sale
 from schemas.sale import SaleCreate, SaleResponse, SaleListResponse
+from models.user import User
 
 router = APIRouter()
+
+
+def _require_sales_read(current_user: User = Depends(deps.require_roles(["admin", "customer_owner", "hr_admin"]))):
+    return current_user
+
+
+def _require_sales_admin(current_user: User = Depends(deps.require_roles(["admin"]))):
+    return current_user
 
 
 @router.post("/", response_model=SaleResponse, status_code=201)
 def create_sale(
     sale_in: SaleCreate,
     db: Session = Depends(deps.get_db),
-    _: dict = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(_require_sales_admin),
 ):
+    if not current_user.is_superuser and current_user.business_id != sale_in.business_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
     sale = crud_sale.create_sale(db, sale_in)
     return {
         "success": True,
@@ -33,8 +44,10 @@ def list_sales(
     startDate: datetime | None = Query(None),
     endDate: datetime | None = Query(None),
     db: Session = Depends(deps.get_db),
-    _: dict = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(_require_sales_read),
 ):
+    if not current_user.is_superuser and current_user.business_id != businessId:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
     sales = crud_sale.list_sales(
         db,
         business_id=businessId,
@@ -56,15 +69,16 @@ def list_sales(
 def get_sale(
     sale_id: int,
     db: Session = Depends(deps.get_db),
-    _: dict = Depends(deps.require_roles(["admin"])),
+    current_user: User = Depends(_require_sales_read),
 ):
     sale = crud_sale.get_sale(db, sale_id)
     if not sale:
         raise HTTPException(status_code=404, detail="Sale not found")
+    if not current_user.is_superuser and current_user.business_id != sale.business_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
     return {
         "success": True,
         "status_code": 200,
         "message": "Sale retrieved successfully",
         "data": sale,
     }
-

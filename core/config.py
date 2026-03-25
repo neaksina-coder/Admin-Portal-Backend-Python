@@ -56,6 +56,11 @@ class Settings:
         "http://localhost:5678/webhook/admin-digest",
     )
 
+    PAYPAL_CLIENT_ID: str = os.getenv("PAYPAL_CLIENT_ID", "ATBECA_qZQojNPl0q-aQkF5FbY7UsU75tWiq5rcTN8nXx1qf17CbBscCHCYtFzC3k0dV0Gfi2ZgRayiT")
+    PAYPAL_CLIENT_SECRET: str = os.getenv("PAYPAL_CLIENT_SECRET", "EBHaqRSvNi-TvB5XTbnGsyL_lkQP4ym098F8Wv0GuGsmerVt_GsoqKv0We4_uBEheIH7tAhpBga8sWAn")
+    PAYPAL_ENV: str = os.getenv("PAYPAL_ENV", "sandbox")  # sandbox | live
+    PAYPAL_CURRENCY: str = os.getenv("PAYPAL_CURRENCY", "USD")
+
     DIFY_BASE_URL: str = os.getenv("DIFY_BASE_URL", "https://api.dify.ai/v1")
     DIFY_API_KEY: str = os.getenv("DIFY_API_KEY", "app-6ZdtpXCz3qB3TOUiYA7Rsg2z")
     DIFY_RESPONSE_MODE: str = os.getenv("DIFY_RESPONSE_MODE", "blocking")
