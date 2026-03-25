@@ -1,6 +1,6 @@
 # api/v1/api_router.py
 from fastapi import APIRouter
-from api.v1 import auth, users, businesses, business_account, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications, contact_inquiries_api, public, hr_employees, hr_leaves, hr_attendance, hr_payroll, hr_dashboard, hr_leave_policies, hr_analytics
+from api.v1 import auth, users, businesses, business_account, plans, subscriptions, customers, dashboard, ai_insights, sales, reports, marketing_campaigns, promos, invoices, audit_logs, admin_digests, chat, notifications, contact_inquiries_api, public, hr_employees, hr_leaves, hr_attendance, hr_payroll, hr_dashboard, hr_leave_policies, hr_analytics, categories, products
 
 
 api_router = APIRouter()
@@ -31,3 +31,5 @@ api_router.include_router(hr_attendance.router, prefix="/hr/attendance", tags=["
 api_router.include_router(hr_payroll.router, prefix="/hr/payroll", tags=["hr-payroll"])
 api_router.include_router(hr_dashboard.router, prefix="/hr/dashboard", tags=["hr-dashboard"])
 api_router.include_router(hr_analytics.router, prefix="/hr/analytics", tags=["hr-analytics"])
+api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
+api_router.include_router(products.router, prefix="/products", tags=["products"])

@@ -22,6 +22,8 @@ from models.chat_conversation import ChatConversation
 from models.chat_message import ChatMessage
 from models.notification import Notification
 from models.contact_inquiry import ContactInquiry
+from models.category import Category
+from models.product import Product
 from models.leave_request import LeaveRequest
 from models.leave_type import LeaveType
 from models.leave_policy import LeavePolicy
